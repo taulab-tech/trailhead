@@ -221,9 +221,75 @@ function guessCategory(eventName: string, sheetName: string, fileName: string): 
  * event name. Returns e.g. "CMPT 370", or just "370" with no subject.
  */
 function classlistCourseCode(fileName: string): string | null {
+  const course = parseClasslistFileName(fileName)
+  if (!course) return null
+  return course.subject ? `${course.subject} ${course.number}` : course.number
+}
+
+function parseClasslistFileName(fileName: string): { subject: string | null; number: string } | null {
   const match = fileName.match(/classlist[\s_-]*(?:([a-z]{2,5})[\s_-]*)?(\d{3,4})\D*$/i)
   if (!match) return null
-  return match[1] ? `${match[1].toUpperCase()} ${match[2]}` : match[2]
+  return { subject: match[1] ? match[1].toUpperCase() : null, number: match[2] }
+}
+
+/**
+ * Registrar exports aren't consistent about including the subject: the same
+ * course arrives as "…classlist GE 495.xls" one term and "…classlist 495.xls"
+ * the next, which would split it into "GE 495 2022" and "495 2023". When
+ * every class-list event for a course number that does carry a subject
+ * agrees on it, subject-less ones are renamed to match ("495 2023" →
+ * "GE 495 2023"); if that name already exists — the same offering imported
+ * under both names — the two events are merged. Numbers shared by several
+ * subjects (CMPT 370 and MATH 370) are ambiguous and left alone, as are
+ * events the user has renamed. Idempotent; runs on startup and after imports.
+ */
+export function harmonizeClasslistEventNames(): number {
+  const db = getDb()
+  const events = db
+    .prepare("SELECT id, name, source_file, category_id FROM events WHERE source_file LIKE '%classlist%'")
+    .all() as { id: string; name: string; source_file: string; category_id: string | null }[]
+
+  const subjectsByNumber = new Map<string, Set<string>>()
+  const bare: { id: string; name: string; number: string; categoryId: string | null }[] = []
+  for (const e of events) {
+    const course = parseClasslistFileName(e.source_file)
+    if (!course) continue
+    if (course.subject) {
+      if (!subjectsByNumber.has(course.number)) subjectsByNumber.set(course.number, new Set())
+      subjectsByNumber.get(course.number)!.add(course.subject)
+    } else if (new RegExp(`^${course.number}( (19|20)\\d{2})?$`).test(e.name)) {
+      bare.push({ id: e.id, name: e.name, number: course.number, categoryId: e.category_id })
+    }
+  }
+
+  const findByName = db.prepare('SELECT id, category_id FROM events WHERE lower(name) = lower(?) AND id != ?')
+  const rename = db.prepare('UPDATE events SET name = ? WHERE id = ?')
+  const moveAttendances = db.prepare(
+    `UPDATE attendances SET event_id = ? WHERE event_id = ?
+       AND student_id NOT IN (SELECT student_id FROM attendances WHERE event_id = ?)`
+  )
+  const fillCategory = db.prepare('UPDATE events SET category_id = ? WHERE id = ? AND category_id IS NULL')
+  const deleteEvent = db.prepare('DELETE FROM events WHERE id = ?')
+
+  let changed = 0
+  const tx = db.transaction(() => {
+    for (const e of bare) {
+      const subjects = subjectsByNumber.get(e.number)
+      if (!subjects || subjects.size !== 1) continue
+      const target = `${[...subjects][0]} ${e.name}`
+      const existing = findByName.get(target, e.id) as { id: string; category_id: string | null } | undefined
+      if (existing) {
+        moveAttendances.run(existing.id, e.id, existing.id)
+        if (e.categoryId) fillCategory.run(e.categoryId, existing.id)
+        deleteEvent.run(e.id)
+      } else {
+        rename.run(target, e.id)
+      }
+      changed++
+    }
+  })
+  tx()
+  return changed
 }
 
 /**
@@ -527,6 +593,13 @@ function runSheetImport(
     }
 
     const flagged = detectFuzzyDuplicates(Array.from(touchedIds))
+    if (harmonizeClasslistEventNames() > 0) {
+      const nameOf = getDb().prepare('SELECT name FROM events WHERE id = ?')
+      for (const summary of eventSummaries.values()) {
+        const row = nameOf.get(summary.eventId) as { name: string } | undefined
+        if (row) summary.eventName = row.name
+      }
+    }
     if (dryRun) {
       newDuplicateSuggestions = flagged
       throw new DryRunRollback()

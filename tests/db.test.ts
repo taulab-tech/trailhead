@@ -15,7 +15,7 @@ import { listPossibleDuplicates, suggestDuplicate } from '../src/main/db/duplica
 import { listEvents } from '../src/main/db/events'
 import { createCategory, deleteCategory, listCategories } from '../src/main/db/categories'
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
-import { commitImport, parseWorkbookForPreview, previewImport } from '../src/main/importer'
+import { commitImport, harmonizeClasslistEventNames, parseWorkbookForPreview, previewImport } from '../src/main/importer'
 
 beforeEach(() => wipeDatabase())
 
@@ -268,4 +268,61 @@ test('edited and removed rows are what gets imported', () => {
     listStudents().map((s) => `${s.firstName} ${s.lastName}`).sort(),
     ['Ann Lee', 'Bo Park']
   )
+})
+
+function importClasslist(fileName: string, students: string[][]): void {
+  const file = writeCsv(fileName, ['First Name,Last Name', ...students.map((s) => s.join(','))])
+  const sheet = parseWorkbookForPreview(file).sheets[0]
+  commitImport({
+    filePath: file,
+    fileName,
+    sheetName: sheet.sheetName,
+    eventName: sheet.suggestedEventName,
+    eventDate: sheet.suggestedDate,
+    categoryId: null,
+    mapping: sheet.suggestedMapping
+  })
+}
+
+const eventNames = (): string[] => listEvents().map((e) => e.name).sort()
+
+test('a class list missing its subject borrows it from the same course, in either import order', () => {
+  importClasslist('202209_86478_classlist GE 495.csv', [['Ann', 'Lee']])
+  importClasslist('202309_86478_classlist 495.csv', [['Bo', 'Park']])
+  assert.deepEqual(eventNames(), ['GE 495 2022', 'GE 495 2023'])
+
+  wipeDatabase()
+  importClasslist('202309_86478_classlist 495.csv', [['Bo', 'Park']])
+  importClasslist('202209_86478_classlist GE 495.csv', [['Ann', 'Lee']])
+  assert.deepEqual(eventNames(), ['GE 495 2022', 'GE 495 2023'])
+})
+
+test('a course number used by two subjects is left alone', () => {
+  importClasslist('202209_1_classlist CMPT 370.csv', [['Ann', 'Lee']])
+  importClasslist('202209_2_classlist MATH 370.csv', [['Bo', 'Park']])
+  importClasslist('202309_3_classlist 370.csv', [['Cy', 'Ng']])
+  assert.deepEqual(eventNames(), ['370 2023', 'CMPT 370 2022', 'MATH 370 2022'])
+})
+
+test('the same offering imported under both names merges into one event without double-counting', () => {
+  importClasslist('202309_86478_classlist 495.csv', [['Ann', 'Lee'], ['Bo', 'Park']])
+  // Simulate an older database where both names already exist side by side.
+  getDb().prepare("UPDATE events SET name = '495 2023'").run()
+  const file = writeCsv('202309_86478_classlist GE 495.csv', ['First Name,Last Name', 'Ann,Lee', 'Cy,Ng'])
+  const sheet = parseWorkbookForPreview(file).sheets[0]
+  getDb().prepare("UPDATE events SET source_file = '202309_86478_classlist 495.csv'").run()
+  commitImport({
+    filePath: file,
+    fileName: '202309_86478_classlist GE 495.csv',
+    sheetName: sheet.sheetName,
+    eventName: 'GE 495 2023',
+    eventDate: sheet.suggestedDate,
+    categoryId: null,
+    mapping: sheet.suggestedMapping
+  })
+  harmonizeClasslistEventNames()
+
+  assert.deepEqual(eventNames(), ['GE 495 2023'])
+  const count = getDb().prepare('SELECT COUNT(*) as c FROM attendances').get() as { c: number }
+  assert.equal(count.c, 3)
 })

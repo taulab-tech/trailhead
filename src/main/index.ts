@@ -3,6 +3,7 @@ import { join } from 'path'
 import { registerIpcHandlers } from './ipc'
 import { closeDb, getDb } from './db'
 import { runAutoBackup } from './backup'
+import { harmonizeClasslistEventNames } from './importer'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -37,6 +38,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   getDb() // ensure schema exists before any window opens
+  harmonizeClasslistEventNames()
   registerIpcHandlers()
   createWindow()
 
