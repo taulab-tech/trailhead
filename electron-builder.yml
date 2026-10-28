@@ -1,0 +1,21 @@
+appId: com.sigma.attendance
+productName: SIGMA Attendance Tracker
+directories:
+  buildResources: resources
+  output: dist
+files:
+  - out/**/*
+  - package.json
+asarUnpack:
+  - '**/*.node'
+win:
+  target: nsis
+mac:
+  target: dmg
+  category: public.app-category.education
+linux:
+  target: AppImage
+  category: Education
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

@@ -1,0 +1,137 @@
+import { dialog, ipcMain, BrowserWindow } from 'electron'
+import fs from 'fs'
+import path from 'path'
+import { parseWorkbookForPreview, commitImport } from './importer'
+import { backupDatabaseTo, getBackupDir, restoreDatabaseFrom, wipeDatabase } from './db'
+import {
+  addAttendance,
+  createStudent,
+  deleteStudent,
+  getStudentDetail,
+  listStudents,
+  mergeStudents,
+  removeAttendance,
+  updateStudent
+} from './db/students'
+import {
+  deleteEvent,
+  getEventDetail,
+  listEvents,
+  updateEvent
+} from './db/events'
+import {
+  dismissDuplicate,
+  getDuplicateById,
+  listPossibleDuplicates,
+  markDuplicateMerged
+} from './db/duplicates'
+import { createCategory, deleteCategory, listCategories, updateCategory } from './db/categories'
+import { getAttendanceDates, getDashboardStats, getEventStudentSets, getFunnelStats } from './db/dashboard'
+import type { ImportSheetRequest, NewStudentInput } from '../shared/types'
+
+export function registerIpcHandlers(): void {
+  ipcMain.handle('dialog:openFiles', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const options: Electron.OpenDialogOptions = {
+      title: 'Choose attendance spreadsheets',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Spreadsheets', extensions: ['xlsx', 'xls', 'csv'] }]
+    }
+    const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+    if (result.canceled) return []
+    return result.filePaths
+  })
+
+  ipcMain.handle('import:preview', (_e, filePath: string) => parseWorkbookForPreview(filePath))
+  ipcMain.handle('import:commit', (_e, request: ImportSheetRequest) => commitImport(request))
+
+  ipcMain.handle('students:list', (_e, search?: string) => listStudents(search))
+  ipcMain.handle('students:detail', (_e, id: string) => getStudentDetail(id))
+  ipcMain.handle('students:create', (_e, input: NewStudentInput) => createStudent(input))
+  ipcMain.handle('students:update', (_e, id: string, fields: Parameters<typeof updateStudent>[1]) =>
+    updateStudent(id, fields)
+  )
+  ipcMain.handle('students:delete', (_e, id: string) => deleteStudent(id))
+  ipcMain.handle(
+    'students:addAttendance',
+    (_e, studentId: string, eventId: string, extraFields?: Record<string, string>) =>
+      addAttendance(studentId, eventId, extraFields ?? {})
+  )
+  ipcMain.handle('students:removeAttendance', (_e, attendanceId: string) => removeAttendance(attendanceId))
+  ipcMain.handle('students:merge', (_e, keepId: string, mergeId: string) => mergeStudents(keepId, mergeId))
+
+  ipcMain.handle('events:list', () => listEvents())
+  ipcMain.handle('events:detail', (_e, id: string) => getEventDetail(id))
+  ipcMain.handle('events:update', (_e, id: string, fields: Parameters<typeof updateEvent>[1]) =>
+    updateEvent(id, fields)
+  )
+  ipcMain.handle('events:delete', (_e, id: string) => deleteEvent(id))
+
+  ipcMain.handle('duplicates:list', (_e, status?: 'pending' | 'merged' | 'dismissed') =>
+    listPossibleDuplicates(status)
+  )
+  ipcMain.handle('duplicates:dismiss', (_e, id: string) => dismissDuplicate(id))
+  ipcMain.handle('duplicates:merge', (_e, id: string, keepId: string) => {
+    const dup = getDuplicateById(id)
+    if (!dup) throw new Error('Duplicate suggestion not found')
+    const mergeId = keepId === dup.studentA.id ? dup.studentB.id : dup.studentA.id
+    mergeStudents(keepId, mergeId)
+    markDuplicateMerged(id)
+  })
+
+  ipcMain.handle('dashboard:stats', () => getDashboardStats())
+
+  ipcMain.handle('categories:list', () => listCategories())
+  ipcMain.handle('categories:create', (_e, name: string, stageOrder: number | null) =>
+    createCategory(name, stageOrder)
+  )
+  ipcMain.handle(
+    'categories:update',
+    (_e, id: string, fields: Parameters<typeof updateCategory>[1]) => updateCategory(id, fields)
+  )
+  ipcMain.handle('categories:delete', (_e, id: string) => deleteCategory(id))
+
+  ipcMain.handle('funnel:eventStudentSets', () => getEventStudentSets())
+  ipcMain.handle('dashboard:attendanceDates', () => getAttendanceDates())
+  ipcMain.handle('dashboard:funnelForYear', (_e, year: number | null) => getFunnelStats(year))
+
+  ipcMain.handle('db:backup', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const defaultName = `sigma-attendance-backup-${new Date().toISOString().slice(0, 10)}.db`
+    const options: Electron.SaveDialogOptions = {
+      title: 'Back up database',
+      defaultPath: defaultName,
+      filters: [{ name: 'SQLite database', extensions: ['db'] }]
+    }
+    const result = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
+    if (result.canceled || !result.filePath) return null
+    await backupDatabaseTo(result.filePath)
+    return path.basename(result.filePath)
+  })
+
+  ipcMain.handle('db:restore', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const backupDir = getBackupDir()
+    const options: Electron.OpenDialogOptions = {
+      title: 'Restore database from backup',
+      defaultPath: fs.existsSync(backupDir) ? backupDir : undefined,
+      properties: ['openFile'],
+      filters: [{ name: 'SQLite database', extensions: ['db'] }]
+    }
+    const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+    if (result.canceled || result.filePaths.length === 0) return null
+    await restoreDatabaseFrom(result.filePaths[0])
+    win?.reload()
+    return path.basename(result.filePaths[0])
+  })
+
+  ipcMain.handle('db:wipe', async () => {
+    const backupDir = getBackupDir()
+    fs.mkdirSync(backupDir, { recursive: true })
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const safetyPath = path.join(backupDir, `sigma-attendance-before-wipe-${stamp}.db`)
+    await backupDatabaseTo(safetyPath)
+    wipeDatabase()
+    return path.basename(safetyPath)
+  })
+}
