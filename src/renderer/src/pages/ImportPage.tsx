@@ -178,8 +178,12 @@ export default function ImportPage({ onImported }: { onImported: () => void }): 
         onDrop={onDrop}
         onClick={browse}
       >
-        <div style={{ fontSize: 28 }}>⇩</div>
-        <h3>Drop in spreadsheet</h3>
+        <div className="dropzone-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
+          </svg>
+        </div>
+        <h3>Drop spreadsheets here</h3>
         <p>.xlsx, .xls or .csv — or click to browse{loading ? ' · reading file…' : ''}</p>
         <input ref={fileInputRef} type="file" style={{ display: 'none' }} />
       </div>

@@ -12,6 +12,12 @@ import FunnelDrillDrawer, { type FunnelSelection } from '../components/FunnelDri
 import EventDetailDrawer from '../components/EventDetailDrawer'
 import { stageLabel } from '../lib/stageLabel'
 
+/** "12%", or "<1%" for a non-zero share that would otherwise round to 0%. */
+function formatShare(part: number, total: number): string {
+  const pct = (part / total) * 100
+  return part > 0 && pct < 1 ? '<1%' : `${Math.round(pct)}%`
+}
+
 function FunnelSection({ stats, onNavigate }: { stats: DashboardStats; onNavigate: (page: string) => void }): React.JSX.Element {
   const [showTable, setShowTable] = useState(false)
   const [allEvents, setAllEvents] = useState<EventRecord[]>([])
@@ -105,7 +111,7 @@ function FunnelSection({ stats, onNavigate }: { stats: DashboardStats; onNavigat
             {funnel.fullFunnelCount}
           </span>{' '}
           <span className="text-dim">
-            of {entryTotal} entry-stage students ({Math.round((funnel.fullFunnelCount / entryTotal) * 100)}%)
+            of {entryTotal} entry-stage students ({formatShare(funnel.fullFunnelCount, entryTotal)})
             made it all the way through to {stageLabel(funnel.stages[funnel.stages.length - 1])}
           </span>
         </div>

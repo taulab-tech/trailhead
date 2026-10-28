@@ -64,7 +64,7 @@ export default function DuplicatesPage({ onChanged }: { onChanged: () => void })
       {loading ? (
         <div className="empty-state">Loading…</div>
       ) : dupes.length === 0 ? (
-        <div className="empty-state">No pending duplicates. Nice and clean.</div>
+        <div className="empty-state">No possible duplicates to review.</div>
       ) : (
         dupes.map((dup) => (
           <div className="card" key={dup.id}>

@@ -11,6 +11,25 @@ type Page = 'import' | 'students' | 'events' | 'duplicates' | 'dashboard' | 'gro
 
 type DbAction = 'export' | 'restore' | 'wipe' | null
 
+/** Minimal stroked line icon; `d` is one SVG path on a 24×24 grid. */
+function Icon({ d, size = 16 }: { d: string; size?: number }): React.JSX.Element {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={d} />
+    </svg>
+  )
+}
+
 function Shell(): React.JSX.Element {
   const [page, setPage] = useState<Page>('dashboard')
   const [pendingDuplicates, setPendingDuplicates] = useState(0)
@@ -77,68 +96,61 @@ function Shell(): React.JSX.Element {
     }
   }
 
-  const nav: { key: Page; label: string }[] = [
-    { key: 'dashboard', label: 'Dashboard' },
-    { key: 'import', label: 'Import' },
-    { key: 'students', label: 'Students' },
-    { key: 'events', label: 'Programs & Events' },
-    { key: 'groups', label: 'Funnel Groups' },
-    { key: 'duplicates', label: 'Duplicates' }
+  const nav: { key: Page; label: string; icon: React.JSX.Element }[] = [
+    { key: 'dashboard', label: 'Dashboard', icon: <Icon d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z" /> },
+    { key: 'import', label: 'Import', icon: <Icon d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" /> },
+    {
+      key: 'students',
+      label: 'Students',
+      icon: <Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    },
+    { key: 'events', label: 'Programs & Events', icon: <Icon d="M3 5h18v16H3zM16 3v4M8 3v4M3 10h18" /> },
+    { key: 'groups', label: 'Funnel Groups', icon: <Icon d="M3 4h18l-7 8v6l-4 2v-8z" /> },
+    { key: 'duplicates', label: 'Duplicates', icon: <Icon d="M9 9h11v11H9zM5 15H4V4h11v1" /> }
   ]
 
   return (
     <div className="app-shell">
       <div className="sidebar">
         <div className="brand">
-          SIGMA<span>Track</span>
+          <div className="brand-mark">Σ</div>
+          <div>
+            <div className="brand-name">SIGMA</div>
+            <div className="brand-sub">Attendance Tracker</div>
+          </div>
         </div>
+        <div className="nav-section-label">Workspace</div>
         {nav.map((item) => (
           <div
             key={item.key}
             className={`nav-item ${page === item.key ? 'active' : ''}`}
             onClick={() => setPage(item.key)}
           >
-            <span>{item.label}</span>
+            {item.icon}
+            <span className="nav-label">{item.label}</span>
             {item.key === 'duplicates' && pendingDuplicates > 0 && (
               <span className="nav-badge">{pendingDuplicates}</span>
             )}
           </div>
         ))}
         <div className="sidebar-footer">
-          <div className="text-faint" style={{ textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em', marginBottom: 6 }}>
-            Data
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <button
-              className="btn btn-ghost btn-sm"
-              style={{ width: '100%' }}
-              disabled={dbAction !== null}
-              onClick={exportBackup}
-            >
-              {dbAction === 'export' ? 'Exporting…' : 'Export backup…'}
-            </button>
-            <button
-              className="btn btn-ghost btn-sm"
-              style={{ width: '100%' }}
-              disabled={dbAction !== null}
-              onClick={restoreBackup}
-            >
-              {dbAction === 'restore' ? 'Restoring…' : 'Restore from backup…'}
-            </button>
-            <button
-              className="btn btn-danger btn-sm"
-              style={{ width: '100%' }}
-              disabled={dbAction !== null}
-              onClick={wipeAll}
-            >
-              {dbAction === 'wipe' ? 'Wiping…' : 'Wipe all data'}
-            </button>
-          </div>
-          {dbStatus && <div style={{ marginTop: 6 }}>{dbStatus}</div>}
-          <div style={{ marginTop: 10 }}>
-            Local &amp; offline.
-            <br />
-            Your data never leaves this computer.
+          <div className="nav-section-label">Data</div>
+          <button className="sidebar-action" disabled={dbAction !== null} onClick={exportBackup}>
+            <Icon d="M12 3v12M7 10l5 5 5-5M4 21h16" />
+            {dbAction === 'export' ? 'Exporting…' : 'Export backup…'}
+          </button>
+          <button className="sidebar-action" disabled={dbAction !== null} onClick={restoreBackup}>
+            <Icon d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />
+            {dbAction === 'restore' ? 'Restoring…' : 'Restore from backup…'}
+          </button>
+          <button className="sidebar-action danger" disabled={dbAction !== null} onClick={wipeAll}>
+            <Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+            {dbAction === 'wipe' ? 'Wiping…' : 'Wipe all data'}
+          </button>
+          {dbStatus && <div className="sidebar-status">{dbStatus}</div>}
+          <div className="sidebar-note">
+            <Icon d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4" size={14} />
+            Stored locally · works offline
           </div>
         </div>
       </div>
