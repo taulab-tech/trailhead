@@ -2,7 +2,8 @@ import path from 'path'
 import * as XLSX from 'xlsx'
 import { findOrCreateEvent } from './db/events'
 import { addAttendance } from './db/students'
-import { DEFAULT_CATEGORIES, getDb } from './db/index'
+import { getDb } from './db/index'
+import { findCategoryByName, getCategoryById } from './db/categories'
 import { detectFuzzyDuplicates, matchStudent } from './matching'
 import { normalizeEmail, normalizePhone, titleCase } from './normalize'
 import { enrolDateFor, parseEnrolTerm, parseEnrolYear, parseYearMonthStamp } from './enrolDate'
@@ -186,8 +187,14 @@ function parseSheet(ws: XLSX.WorkSheet): { headers: string[]; rows: Record<strin
   return { headers, rows }
 }
 
-function categoryId(name: string): string {
-  return DEFAULT_CATEGORIES.find((c) => c.name === name)!.id
+/** The id of the user's group with this name, if they have one — guesses never invent groups. */
+function categoryId(name: string): string | null {
+  return findCategoryByName(name)?.id ?? null
+}
+
+/** SIGMA-program events are dated differently (June 1st) from class-term events. */
+function isSigmaGroup(id: string | null): boolean {
+  return !!id && getCategoryById(id)?.name.toLowerCase() === 'sigma'
 }
 
 /** Best-effort guess at which funnel category a sheet belongs to, based on its name. */
@@ -257,7 +264,7 @@ function guessDate(
 
   const text = `${eventName} ${sheetName} ${fileName}`
 
-  if (resolvedCategoryId === categoryId('SIGMA')) {
+  if (isSigmaGroup(resolvedCategoryId)) {
     const year = parseEnrolYear(text) ?? parseYearMonthStamp(text)?.year ?? null
     return year ? `${year}-06-01` : null
   }
@@ -366,7 +373,7 @@ export function commitImport(request: ImportSheetRequest): ImportResult {
   const eventIds = new Map<string, string>()
 
   function dateForSplitYear(year: number, rawYear: string): string {
-    if (request.categoryId === categoryId('SIGMA')) return `${year}-06-01`
+    if (isSigmaGroup(request.categoryId)) return `${year}-06-01`
     const term = parseEnrolTerm(rawYear) ?? 'fall'
     return enrolDateFor(year, term)
   }

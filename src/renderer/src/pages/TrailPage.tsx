@@ -4,6 +4,7 @@ import { useDataVersion } from '../DataContext'
 import { colorForIndex } from '../lib/palette'
 import { seriesKeyFor } from '../lib/eventSeries'
 import { trailStopLabel } from '../lib/stageLabel'
+import { STANDARD_GROUPS } from '../../../shared/standardGroups'
 
 type DragItem = { kind: 'group'; id: string } | { kind: 'events'; ids: string[] }
 
@@ -201,6 +202,17 @@ export default function TrailPage(): React.JSX.Element {
     bump()
   }
 
+  const addStandardGroups = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      for (const g of STANDARD_GROUPS) await window.api.createCategory(g.name, g.stageOrder)
+      await refresh()
+      bump()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const createGroup = async (): Promise<void> => {
     if (!newName.trim()) return
     await window.api.createCategory(newName.trim(), null)
@@ -248,45 +260,84 @@ export default function TrailPage(): React.JSX.Element {
 
       {loading ? (
         <div className="empty-state">Loading…</div>
+      ) : categories.length === 0 && !adding ? (
+        <div className="card trail-start">
+          <div className="trail-start-mark">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M2 20L9 6l4.5 7.5L16 10l6 10z" />
+            </svg>
+          </div>
+          <h2>Your trail is empty</h2>
+          <p>
+            Groups are the stops on a student’s path through SIGMA. Start with the usual trail and adjust it,
+            or build your own from scratch.
+          </p>
+          <div className="trail-start-preview" aria-label="Standard trail preview">
+            {[
+              ['1', 'Hackathon · Inspiration Event'],
+              ['2', 'Class'],
+              ['3', 'SIGMA']
+            ].map(([n, label], i) => (
+              <React.Fragment key={n}>
+                {i > 0 && <span className="trail-start-dash" />}
+                <span className="trail-start-stop">
+                  <span className="trail-start-num">{n}</span>
+                  {label}
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+          <div className="trail-start-actions">
+            <button className="btn btn-primary" onClick={addStandardGroups}>
+              Add standard groups
+            </button>
+            <button className="btn" onClick={() => setAdding(true)}>
+              Create my own
+            </button>
+          </div>
+          <p className="trail-start-note">Social and Other are added too, off the trail.</p>
+        </div>
       ) : (
         <>
-          <div className="card trail-card-surface">
-            <div className={`trail ${draggingGroup ? 'is-dragging-group' : ''}`}>
-              <div className="trail-track">
-                <div className="trail-line" />
-                {stages.map((stop, i) => (
-                  <React.Fragment key={stop.map((c) => c.id).join('|')}>
-                    <div
-                      className={`trail-gap ${over === `gap:${i}` ? 'is-target' : ''}`}
-                      {...dropProps(`gap:${i}`, { kind: 'gap', index: i }, 'group')}
-                    >
-                      <div className="trail-marker trail-marker-new">+</div>
-                    </div>
-                    <div className="trail-stop">
-                      <div className="trail-marker">{i + 1}</div>
-                      <div className="trail-stop-label">{trailStopLabel(i, stages.length)}</div>
+          {categories.length > 0 && (
+            <div className="card trail-card-surface">
+              <div className={`trail ${draggingGroup ? 'is-dragging-group' : ''}`}>
+                <div className="trail-track">
+                  <div className="trail-line" />
+                  {stages.map((stop, i) => (
+                    <React.Fragment key={stop.map((c) => c.id).join('|')}>
                       <div
-                        className={`trail-dropzone ${over === `stage:${i}` ? 'is-target' : ''}`}
-                        {...dropProps(`stage:${i}`, { kind: 'stage', index: i }, 'group')}
+                        className={`trail-gap ${over === `gap:${i}` ? 'is-target' : ''}`}
+                        {...dropProps(`gap:${i}`, { kind: 'gap', index: i }, 'group')}
                       >
-                        {stop.map(renderCard)}
+                        <div className="trail-marker trail-marker-new">+</div>
                       </div>
+                      <div className="trail-stop">
+                        <div className="trail-marker">{i + 1}</div>
+                        <div className="trail-stop-label">{trailStopLabel(i, stages.length)}</div>
+                        <div
+                          className={`trail-dropzone ${over === `stage:${i}` ? 'is-target' : ''}`}
+                          {...dropProps(`stage:${i}`, { kind: 'stage', index: i }, 'group')}
+                        >
+                          {stop.map(renderCard)}
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  ))}
+                  <div className="trail-stop is-new">
+                    <div className="trail-marker trail-marker-new">+</div>
+                    <div className="trail-stop-label">New stop</div>
+                    <div
+                      className={`trail-dropzone trail-dropzone-new ${over === 'gap:end' ? 'is-target' : ''}`}
+                      {...dropProps('gap:end', { kind: 'gap', index: stages.length }, 'group')}
+                    >
+                      <span>Drag a group here to add a stop at the end of the trail</span>
                     </div>
-                  </React.Fragment>
-                ))}
-                <div className="trail-stop is-new">
-                  <div className="trail-marker trail-marker-new">+</div>
-                  <div className="trail-stop-label">New stop</div>
-                  <div
-                    className={`trail-dropzone trail-dropzone-new ${over === 'gap:end' ? 'is-target' : ''}`}
-                    {...dropProps('gap:end', { kind: 'gap', index: stages.length }, 'group')}
-                  >
-                    <span>Drag a group here to add a stop at the end of the trail</span>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="card trail-off">
             <div className="trail-off-head">

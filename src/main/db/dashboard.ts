@@ -1,9 +1,9 @@
-import { getDb, DEFAULT_CATEGORIES } from './index'
+import { getDb } from './index'
+import { findCategoryByName } from './categories'
 import { getPendingDuplicateCount } from './duplicates'
 import { parseEnrolYear, enrolDateFor } from '../enrolDate'
 import type { AttendanceDate, DashboardStats, FunnelFlow, FunnelNode, FunnelStats } from '../../shared/types'
 
-const CLASS_CATEGORY_ID = DEFAULT_CATEGORIES.find((c) => c.name === 'Class')!.id
 
 /**
  * A real or inferred date per (student, event) attendance, used to make the
@@ -30,13 +30,14 @@ export function getAttendanceDates(): AttendanceDate[] {
     enrolTerm: string | null
   }[]
 
+  const classCategoryId = findCategoryByName('Class')?.id ?? null
   const dates: AttendanceDate[] = []
   for (const r of rows) {
     if (r.eventDate) {
       dates.push({ studentId: r.studentId, eventId: r.eventId, date: r.eventDate })
       continue
     }
-    if (r.categoryId !== CLASS_CATEGORY_ID) continue
+    if (!classCategoryId || r.categoryId !== classCategoryId) continue
     const year = parseEnrolYear(r.yearInProgram)
     if (!year || (r.enrolTerm !== 'fall' && r.enrolTerm !== 'winter')) continue
     dates.push({ studentId: r.studentId, eventId: r.eventId, date: enrolDateFor(year, r.enrolTerm) })

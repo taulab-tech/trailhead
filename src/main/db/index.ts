@@ -78,17 +78,6 @@ CREATE TABLE IF NOT EXISTS possible_duplicates (
 CREATE INDEX IF NOT EXISTS idx_possible_duplicates_status ON possible_duplicates(status);
 `
 
-// Fixed ids so seeding is idempotent and other code can reference these
-// well-known defaults directly (e.g. import category auto-guessing).
-export const DEFAULT_CATEGORIES: { id: string; name: string; stageOrder: number | null }[] = [
-  { id: 'cat-hackathon', name: 'Hackathon', stageOrder: 1 },
-  { id: 'cat-inspiration', name: 'Inspiration Event', stageOrder: 1 },
-  { id: 'cat-class', name: 'Class', stageOrder: 2 },
-  { id: 'cat-sigma', name: 'SIGMA', stageOrder: 3 },
-  { id: 'cat-social', name: 'Social', stageOrder: null },
-  { id: 'cat-other', name: 'Other', stageOrder: null }
-]
-
 // `CREATE TABLE IF NOT EXISTS` only applies to brand-new tables — it won't add
 // columns to a table that already exists from a previous version of the app.
 // Anything added to an existing table after its first release needs an
@@ -135,17 +124,6 @@ function renormalizeNsids(db: Database.Database): void {
   tx()
 }
 
-function seedDefaultCategories(db: Database.Database): void {
-  const insert = db.prepare(
-    'INSERT OR IGNORE INTO event_categories (id, name, stage_order, created_at) VALUES (?, ?, ?, ?)'
-  )
-  const now = new Date().toISOString()
-  const tx = db.transaction(() => {
-    for (const c of DEFAULT_CATEGORIES) insert.run(c.id, c.name, c.stageOrder, now)
-  })
-  tx()
-}
-
 function resolveDbPath(): string {
   return process.env.SIGMA_DB_PATH ?? path.join(app.getPath('userData'), 'sigma-attendance.db')
 }
@@ -160,7 +138,6 @@ export function getDb(): Database.Database {
   dbInstance.pragma('foreign_keys = ON')
   dbInstance.exec(SCHEMA)
   migrateSchema(dbInstance)
-  seedDefaultCategories(dbInstance)
   return dbInstance
 }
 
@@ -186,7 +163,7 @@ export async function backupDatabaseTo(destPath: string): Promise<void> {
   await getDb().backup(destPath)
 }
 
-/** Deletes every student, event, and attendance record, then re-seeds the default categories. */
+/** Deletes every student, event, attendance record and group, leaving an empty trail. */
 export function wipeDatabase(): void {
   const db = getDb()
   const tx = db.transaction(() => {
@@ -196,7 +173,6 @@ export function wipeDatabase(): void {
     db.exec('DELETE FROM event_categories')
   })
   tx()
-  seedDefaultCategories(db)
 }
 
 /**

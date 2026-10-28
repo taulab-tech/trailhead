@@ -13,6 +13,7 @@ import { closeDb, getDb, wipeDatabase } from '../src/main/db'
 import { createStudent, getStudentById, listStudents, mergeStudents } from '../src/main/db/students'
 import { listPossibleDuplicates, suggestDuplicate } from '../src/main/db/duplicates'
 import { listEvents } from '../src/main/db/events'
+import { createCategory, deleteCategory, listCategories } from '../src/main/db/categories'
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
 import { commitImport, parseWorkbookForPreview } from '../src/main/importer'
 
@@ -149,4 +150,40 @@ test('re-importing the same sheet does not duplicate students or attendance', ()
   assert.equal(listStudents().length, 2)
   const count = getDb().prepare('SELECT COUNT(*) as c FROM attendances').get() as { c: number }
   assert.equal(count.c, 2)
+})
+
+test('a wiped database has no groups, and a deleted group stays deleted after reopening', () => {
+  assert.equal(listCategories().length, 0)
+
+  const other = createCategory('Other', null)
+  deleteCategory(other.id)
+  closeDb()
+  getDb()
+
+  assert.equal(listCategories().length, 0)
+})
+
+test('import only suggests a group the user actually has', () => {
+  const file = writeCsv('03_15_2026 AgTech Hackathon.csv', ['First Name,Last Name', 'Ann,Lee'])
+  assert.equal(parseWorkbookForPreview(file).sheets[0].suggestedCategoryId, null)
+
+  const hackathon = createCategory('Hackathon', 1)
+  assert.equal(parseWorkbookForPreview(file).sheets[0].suggestedCategoryId, hackathon.id)
+})
+
+test('an ungrouped mixed-year sheet is dated by term, not as a SIGMA cohort', () => {
+  const file = writeCsv('cohorts.csv', ['First Name,Last Name,Year', 'Ann,Lee,2023', 'Bo,Park,2024'])
+  const sheet = parseWorkbookForPreview(file).sheets[0]
+  commitImport({
+    filePath: file,
+    fileName: 'cohorts.csv',
+    sheetName: sheet.sheetName,
+    eventName: 'Cohort',
+    eventDate: null,
+    categoryId: null,
+    mapping: sheet.suggestedMapping
+  })
+
+  const dates = listEvents().map((e) => e.date).sort()
+  assert.deepEqual(dates, ['2023-09-01', '2024-09-01'])
 })
