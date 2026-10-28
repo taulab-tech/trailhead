@@ -1,4 +1,6 @@
-# SIGMA Attendance Tracker
+# Trailhead
+
+SIGMA's attendance tracker.
 
 A local, offline desktop app for tracking student attendance across SIGMA programs and events.
 Drag in event/attendance spreadsheets, and it builds a master student list — automatically

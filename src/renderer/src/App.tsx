@@ -113,10 +113,12 @@ function Shell(): React.JSX.Element {
     <div className="app-shell">
       <div className="sidebar">
         <div className="brand">
-          <div className="brand-mark">Σ</div>
+          <div className="brand-mark">
+            <Icon d="M2 20L9 6l4.5 7.5L16 10l6 10z" size={20} />
+          </div>
           <div>
-            <div className="brand-name">SIGMA</div>
-            <div className="brand-sub">Attendance Tracker</div>
+            <div className="brand-name">Trailhead</div>
+            <div className="brand-sub">SIGMA Attendance Tracker</div>
           </div>
         </div>
         <div className="nav-section-label">Workspace</div>

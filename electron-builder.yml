@@ -1,5 +1,5 @@
 appId: com.sigma.attendance
-productName: SIGMA Attendance Tracker
+productName: Trailhead
 directories:
   buildResources: resources
   output: dist
