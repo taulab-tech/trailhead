@@ -5,15 +5,35 @@ import {
   findStudentIdByEmail,
   findStudentIdByNsid,
   getAllStudentsMinimal,
+  findStudentsByIdLocalPart,
   getStudentById,
-  normalizeNsid,
   updateStudent
 } from './db/students'
 import { suggestDuplicate } from './db/duplicates'
-import { normalizeName } from './normalize'
+import { idLocalPart, normalizeName, normalizeNsid } from './normalize'
 import { nameSimilarity } from './similarity'
 
 export const FUZZY_DUPLICATE_THRESHOLD = 0.9
+
+/** How alike two names must be before an email-form student ID may link them. */
+export const ID_NAME_AGREEMENT_THRESHOLD = 0.85
+
+/** Two student IDs belong to different people when the parts before any "@" differ. */
+function idsConflict(a: string | null | undefined, b: string | null | undefined): boolean {
+  return !!a && !!b && idLocalPart(a) !== idLocalPart(b)
+}
+
+/**
+ * Whether two names are compatible enough to trust an ID that only matched
+ * after ignoring its "@…" part. A row with no usable name can't contradict
+ * anything, so it agrees.
+ */
+function namesAgree(a: { firstName: string; lastName: string }, b: { firstName: string; lastName: string }): boolean {
+  const na = normalizeName(`${a.firstName} ${a.lastName}`)
+  const nb = normalizeName(`${b.firstName} ${b.lastName}`)
+  if (!na || !nb || na === 'unknown' || nb === 'unknown') return true
+  return nameSimilarity(na, nb) >= ID_NAME_AGREEMENT_THRESHOLD
+}
 
 export interface PersonRecord {
   firstName: string
@@ -61,9 +81,11 @@ function enrichIfBlank(studentId: string, fields: Record<string, string | null |
 
 /**
  * Matches (or creates) the student for a single imported attendance row.
- * Priority: NSID exact > email exact > unique exact normalized-name match
- * (skipped when the NSIDs conflict). Anything less certain is left for the fuzzy duplicate pass below rather
- * than being auto-merged.
+ * Priority: student ID exact > student ID ignoring any "@…" part (only when
+ * the names agree, so "john@gmail.com" and "john@hotmail.com" never merge
+ * two different Johns) > email exact > unique exact normalized-name match
+ * (skipped when the IDs conflict). Anything less certain is left for the
+ * fuzzy duplicate pass below rather than being auto-merged.
  */
 export function matchStudent(person: PersonRecord): MatchResult {
   const normalizedNsid = normalizeNsid(person.nsid)
@@ -75,6 +97,12 @@ export function matchStudent(person: PersonRecord): MatchResult {
 
   if (normalizedNsid) {
     studentId = findStudentIdByNsid(normalizedNsid)
+    if (!studentId) {
+      const sameId = findStudentsByIdLocalPart(idLocalPart(normalizedNsid)).filter((s) =>
+        namesAgree(person, s)
+      )
+      if (sameId.length === 1) studentId = sameId[0].id
+    }
   }
 
   if (!studentId) {
@@ -91,12 +119,12 @@ export function matchStudent(person: PersonRecord): MatchResult {
     const normalizedFullName = normalizeName(`${person.firstName} ${person.lastName}`)
     if (normalizedFullName) {
       const all = getAllStudentsMinimal()
-      // A name match is only trusted when the NSIDs don't contradict it — two
-      // different NSIDs means two different people who share a name.
+      // A name match is only trusted when the IDs don't contradict it — two
+      // different IDs means two different people who share a name.
       const exactMatches = all.filter(
         (s) =>
           normalizeName(`${s.firstName} ${s.lastName}`) === normalizedFullName &&
-          !(normalizedNsid && s.nsid && s.nsid !== normalizedNsid)
+          !idsConflict(normalizedNsid, s.nsid)
       )
       if (exactMatches.length === 1) {
         studentId = exactMatches[0].id
@@ -156,8 +184,8 @@ export function detectFuzzyDuplicates(touchedIds: string[]): number {
       if (other.id === touched.id) continue
       // Avoid double-work: if both are in this batch, only compare when touched.id < other.id
       if (touchedSet.has(other.id) && touched.id > other.id) continue
-      // NSIDs are unique per person, so two different ones can never be a duplicate.
-      if (touched.nsid && other.nsid && touched.nsid !== other.nsid) continue
+      // Student IDs are unique per person, so two different ones can never be a duplicate.
+      if (idsConflict(touched.nsid, other.nsid)) continue
 
       const score = nameSimilarity(touched.normalized, other.normalized)
       if (score >= FUZZY_DUPLICATE_THRESHOLD) {

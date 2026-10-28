@@ -8,24 +8,22 @@ export function normalizeEmail(email: string | null | undefined): string | null 
 /** Values people type into an ID column when there isn't one — never a real student ID. */
 const NSID_PLACEHOLDERS = new Set(['n/a', 'na', 'none', 'null', 'unknown', 'tbd', '-', '--', '?', '0'])
 
-/**
- * Rosters often record the same student ID both bare ("abc123") and as the
- * school email ("abc123@school.edu"). When the school's email domain is
- * configured, it (and any subdomain) is stripped so the two forms match;
- * other domains are left alone so "john@gmail.com" never becomes "john".
- */
-export function normalizeNsid(
-  nsid: string | null | undefined,
-  schoolEmailDomain: string | null = null
-): string | null {
+/** Student IDs are stored as written (lowercased), minus placeholder values. */
+export function normalizeNsid(nsid: string | null | undefined): string | null {
   if (!nsid) return null
-  let trimmed = nsid.trim().toLowerCase()
-  if (schoolEmailDomain) {
-    const escaped = schoolEmailDomain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    trimmed = trimmed.replace(new RegExp(`@([a-z0-9-]+\\.)*${escaped}$`), '')
-  }
+  const trimmed = nsid.trim().toLowerCase()
   if (!trimmed || NSID_PLACEHOLDERS.has(trimmed)) return null
   return trimmed
+}
+
+/**
+ * Rosters often write the same student ID both bare ("abc123") and as an
+ * email ("abc123@school.edu"); this is the part before the "@" that the two
+ * forms share. Plain IDs are returned unchanged.
+ */
+export function idLocalPart(id: string): string {
+  const at = id.indexOf('@')
+  return at > 0 ? id.slice(0, at) : id
 }
 
 export function normalizeName(name: string | null | undefined): string {

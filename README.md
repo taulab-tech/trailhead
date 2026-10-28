@@ -15,7 +15,8 @@ No AI, no network calls. Everything (including the database) lives on your compu
   You can rename the event, set a date, and review/adjust which spreadsheet column maps to
   which field before importing.
 - **Matching**: students are linked across events using, in order of confidence: student ID
-  match, email match, then an exact normalized name match — but only when exactly one
+  match (an ID written as an email, like `abc123@school.edu`, also matches bare `abc123` when
+  the names agree), email match, then an exact normalized name match — but only when exactly one
   existing student has that name and their student IDs don't conflict. Anything less certain (e.g.
   "Chris Elash" vs "Christopher Elash", or two existing students with the same name) is left
   alone and flagged on the **Duplicates** screen for you to merge or dismiss by hand. Students
@@ -25,8 +26,6 @@ No AI, no network calls. Everything (including the database) lives on your compu
   records the matching missed.
 - **Programs & Events**: every imported roster, with attendee lists and the ability to rename,
   re-date, or delete an accidentally-imported sheet.
-- **Settings**: set your school's email domain so a student ID written as `abc123` and as
-  `abc123@school.edu` count as the same student.
 - **The Trail**: drag-and-drop the groups (Hackathon, Class, Program, …) into the order students
   move through them, and drag events between groups. A new database starts with an empty trail.
 - **Dashboard**: aggregate stats — unique students, repeat-attendance rate, breakdowns by

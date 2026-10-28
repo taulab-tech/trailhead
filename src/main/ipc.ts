@@ -26,7 +26,6 @@ import {
 } from './db/duplicates'
 import { createCategory, deleteCategory, listCategories, updateCategory } from './db/categories'
 import { getAttendanceDates, getDashboardStats, getEventStudentSets, getFunnelStats } from './db/dashboard'
-import { getSettings, setSchoolEmailDomain } from './db/settings'
 import type { ImportSheetRequest, NewStudentInput } from '../shared/types'
 
 export function registerIpcHandlers(): void {
@@ -94,9 +93,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('funnel:eventStudentSets', () => getEventStudentSets())
   ipcMain.handle('dashboard:attendanceDates', () => getAttendanceDates())
   ipcMain.handle('dashboard:funnelForYear', (_e, year: number | null) => getFunnelStats(year))
-
-  ipcMain.handle('settings:get', () => getSettings())
-  ipcMain.handle('settings:setSchoolEmailDomain', (_e, domain: string | null) => setSchoolEmailDomain(domain))
 
   ipcMain.handle('db:backup', async () => {
     const win = BrowserWindow.getFocusedWindow()

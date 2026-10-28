@@ -76,11 +76,6 @@ CREATE TABLE IF NOT EXISTS possible_duplicates (
   UNIQUE(student_a_id, student_b_id)
 );
 CREATE INDEX IF NOT EXISTS idx_possible_duplicates_status ON possible_duplicates(status);
-
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
 `
 
 // `CREATE TABLE IF NOT EXISTS` only applies to brand-new tables — it won't add
@@ -104,24 +99,14 @@ function migrateSchema(db: Database.Database): void {
   renormalizeNsids(db)
 }
 
-/** The configured school email domain (e.g. "school.edu"), or null when unset. */
-export function readSchoolEmailDomain(db: Database.Database): string | null {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'school_email_domain'").get() as
-    | { value: string }
-    | undefined
-  return row?.value ?? null
-}
-
 /**
- * Brings stored student IDs in line with the current normalizeNsid and
- * school email domain (e.g. "abc123@school.edu" → "abc123", "n/a" → NULL).
- * Runs on open and whenever the domain setting changes. A value
+ * Brings stored student IDs in line with the current normalizeNsid
+ * (e.g. "n/a" → NULL). Runs on open. A value
  * whose normalized form is already held by a different student is left
  * as-is rather than violating the unique index — those two records are
  * likely the same person and are for the user to merge.
  */
-export function renormalizeNsids(db: Database.Database): void {
-  const domain = readSchoolEmailDomain(db)
+function renormalizeNsids(db: Database.Database): void {
   const rows = db.prepare('SELECT id, nsid FROM students WHERE nsid IS NOT NULL').all() as {
     id: string
     nsid: string
@@ -130,7 +115,7 @@ export function renormalizeNsids(db: Database.Database): void {
   const update = db.prepare('UPDATE students SET nsid = ? WHERE id = ?')
   const tx = db.transaction(() => {
     for (const row of rows) {
-      const normalized = normalizeNsid(row.nsid, domain)
+      const normalized = normalizeNsid(row.nsid)
       if (normalized === row.nsid) continue
       if (normalized && holder.get(normalized, row.id)) continue
       update.run(normalized, row.id)

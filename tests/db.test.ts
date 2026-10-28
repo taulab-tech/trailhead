@@ -16,12 +16,8 @@ import { listEvents } from '../src/main/db/events'
 import { createCategory, deleteCategory, listCategories } from '../src/main/db/categories'
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
 import { commitImport, parseWorkbookForPreview } from '../src/main/importer'
-import { setSchoolEmailDomain } from '../src/main/db/settings'
 
-beforeEach(() => {
-  wipeDatabase()
-  setSchoolEmailDomain(null)
-})
+beforeEach(() => wipeDatabase())
 
 function writeCsv(name: string, lines: string[]): string {
   const file = path.join(tmpDir, name)
@@ -74,33 +70,30 @@ test('same name with no conflicting identifiers is still linked', () => {
   assert.equal(second.studentId, first.studentId)
 })
 
-test('with a school domain set, an ID written as the school email matches the bare ID', () => {
-  setSchoolEmailDomain('school.edu')
+test('an ID written as an email matches the bare ID when the names agree', () => {
   const first = matchStudent(person('Ann', 'Lee', 'abc123'))
-  const second = matchStudent(person('Annie', 'Lee', 'ABC123@mail.school.edu'))
+  const second = matchStudent(person('Annie', 'Lee', 'ABC123@school.edu'))
+  const third = matchStudent(person('Ann', 'Lee', 'abc123@other.org'))
 
   assert.equal(second.created, false)
   assert.equal(second.studentId, first.studentId)
+  assert.equal(third.studentId, first.studentId)
 })
 
-test('without a school domain, email-style IDs are kept whole', () => {
-  const student = matchStudent(person('Ann', 'Lee', 'john@gmail.com'))
-  assert.equal(getStudentById(student.studentId)?.nsid, 'john@gmail.com')
+test('an email-form ID stored first still matches a bare ID later', () => {
+  const first = matchStudent(person('Chris', 'Elash', 'cel123@school.edu'))
+  const second = matchStudent(person('Christopher', 'Elash', 'cel123'))
 
-  setSchoolEmailDomain('school.edu')
-  assert.equal(getStudentById(student.studentId)?.nsid, 'john@gmail.com')
+  assert.equal(second.studentId, first.studentId)
 })
 
-test('setting the school domain later cleans up IDs already stored as emails', () => {
-  const ann = matchStudent(person('Ann', 'Lee', 'abc123@school.edu'))
-  assert.equal(getStudentById(ann.studentId)?.nsid, 'abc123@school.edu')
+test('the same email username with different names stays two students', () => {
+  const smith = matchStudent(person('John', 'Smith', 'john@gmail.com'))
+  const park = matchStudent(person('John', 'Park', 'john@hotmail.com'))
 
-  setSchoolEmailDomain('@School.edu ')
-  assert.equal(getStudentById(ann.studentId)?.nsid, 'abc123')
-})
-
-test('an invalid school domain is rejected', () => {
-  assert.throws(() => setSchoolEmailDomain('not a domain'))
+  assert.notEqual(smith.studentId, park.studentId)
+  assert.equal(getStudentById(smith.studentId)?.nsid, 'john@gmail.com')
+  assert.equal(getStudentById(park.studentId)?.nsid, 'john@hotmail.com')
 })
 
 test('placeholder student IDs like "N/A" never link different students', () => {
@@ -111,18 +104,13 @@ test('placeholder student IDs like "N/A" never link different students', () => {
   assert.equal(getStudentById(first.studentId)?.nsid, null)
 })
 
-test('opening an older database cleans up its stored student IDs', () => {
-  getDb().prepare("INSERT INTO settings (key, value) VALUES ('school_email_domain', 'school.edu')").run()
-  const email = createStudent({ firstName: 'Ann', lastName: 'Lee' })
+test('opening an older database clears placeholder student IDs', () => {
   const placeholder = createStudent({ firstName: 'Bo', lastName: 'Park' })
-  const set = getDb().prepare('UPDATE students SET nsid = ? WHERE id = ?')
-  set.run('abc123@school.edu', email)
-  set.run('n/a', placeholder)
+  getDb().prepare('UPDATE students SET nsid = ? WHERE id = ?').run('n/a', placeholder)
 
   closeDb()
   getDb()
 
-  assert.equal(getStudentById(email)?.nsid, 'abc123')
   assert.equal(getStudentById(placeholder)?.nsid, null)
 })
 

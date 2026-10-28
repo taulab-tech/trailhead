@@ -1,12 +1,6 @@
 import { randomUUID } from 'crypto'
 import { getDb } from './index'
-import { normalizeEmail, normalizeNsid as normalizeNsidWith, normalizePhone } from '../normalize'
-import { getSchoolEmailDomain } from './settings'
-
-/** Normalizes a student ID using the configured school email domain. */
-export function normalizeNsid(nsid: string | null | undefined): string | null {
-  return normalizeNsidWith(nsid, getSchoolEmailDomain())
-}
+import { normalizeEmail, normalizeNsid, normalizePhone } from '../normalize'
 import type { Attendance, NewStudentInput, Student, StudentDetail } from '../../shared/types'
 
 interface StudentRow {
@@ -147,6 +141,22 @@ export function findStudentIdByNsid(nsid: string): string | null {
     | { id: string }
     | undefined
   return row?.id ?? null
+}
+
+/**
+ * Students whose stored ID shares `localPart` — stored bare ("abc123") or as
+ * an email ("abc123@…"). Used when an incoming ID only matches once the
+ * "@…" part is ignored, which the caller confirms against names.
+ */
+export function findStudentsByIdLocalPart(localPart: string): MinimalStudent[] {
+  const db = getDb()
+  const escaped = localPart.replace(/[\\%_]/g, (c) => `\\${c}`)
+  const rows = db
+    .prepare(
+      "SELECT id, first_name, last_name, nsid FROM students WHERE nsid = ? OR nsid LIKE ? ESCAPE '\\'"
+    )
+    .all(localPart, `${escaped}@%`) as StudentRow[]
+  return rows.map((r) => ({ id: r.id, firstName: r.first_name, lastName: r.last_name, nsid: r.nsid }))
 }
 
 export function findStudentIdByEmail(email: string): string | null {
