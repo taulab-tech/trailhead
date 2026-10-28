@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
 import Database from 'better-sqlite3'
+import { normalizeNsid } from '../normalize'
 
 let dbInstance: Database.Database | null = null
 
@@ -105,6 +106,33 @@ function migrateSchema(db: Database.Database): void {
   if (!studentColumns.some((c) => c.name === 'enrol_term')) {
     db.exec('ALTER TABLE students ADD COLUMN enrol_term TEXT')
   }
+
+  renormalizeNsids(db)
+}
+
+/**
+ * Brings NSIDs stored by older versions in line with the current
+ * normalizeNsid (e.g. "abc123@usask.ca" → "abc123", "n/a" → NULL). A value
+ * whose normalized form is already held by a different student is left
+ * as-is rather than violating the unique index — those two records are
+ * likely the same person and are for the user to merge.
+ */
+function renormalizeNsids(db: Database.Database): void {
+  const rows = db.prepare('SELECT id, nsid FROM students WHERE nsid IS NOT NULL').all() as {
+    id: string
+    nsid: string
+  }[]
+  const holder = db.prepare('SELECT id FROM students WHERE nsid = ? AND id != ?')
+  const update = db.prepare('UPDATE students SET nsid = ? WHERE id = ?')
+  const tx = db.transaction(() => {
+    for (const row of rows) {
+      const normalized = normalizeNsid(row.nsid)
+      if (normalized === row.nsid) continue
+      if (normalized && holder.get(normalized, row.id)) continue
+      update.run(normalized, row.id)
+    }
+  })
+  tx()
 }
 
 function seedDefaultCategories(db: Database.Database): void {

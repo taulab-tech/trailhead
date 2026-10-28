@@ -52,6 +52,11 @@ function FunnelSection({ stats, onNavigate }: { stats: DashboardStats; onNavigat
     return allEvents.filter((e) => e.date?.startsWith(prefix))
   }, [allEvents, selectedYear])
 
+  const undatedFunnelEvents = useMemo(
+    () => allEvents.filter((e) => !e.date && e.categoryStage !== null).length,
+    [allEvents]
+  )
+
   const scopedEventStudentSets = useMemo(() => {
     if (selectedYear === 'overall') return eventStudentSets
     const scopedIds = new Set(scopedEvents.map((e) => e.id))
@@ -86,6 +91,13 @@ function FunnelSection({ stats, onNavigate }: { stats: DashboardStats; onNavigat
         How students move from entry events (hackathons, inspiration events) through classes to SIGMA
         itself{selectedYear === 'overall' ? '' : ` — ${selectedYear} only`}.
       </p>
+      {selectedYear !== 'overall' && undatedFunnelEvents > 0 && (
+        <p className="text-faint" style={{ marginTop: -4 }}>
+          {undatedFunnelEvents} funnel event{undatedFunnelEvents === 1 ? ' has' : 's have'} no date and{' '}
+          {undatedFunnelEvents === 1 ? "isn't" : "aren't"} counted in any single year — set dates on
+          Programs &amp; Events to include {undatedFunnelEvents === 1 ? 'it' : 'them'}.
+        </p>
+      )}
 
       {funnel.stages.length > 1 && entryTotal > 0 && (
         <div style={{ marginBottom: 16 }}>

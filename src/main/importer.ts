@@ -2,7 +2,7 @@ import path from 'path'
 import * as XLSX from 'xlsx'
 import { findOrCreateEvent } from './db/events'
 import { addAttendance } from './db/students'
-import { DEFAULT_CATEGORIES } from './db/index'
+import { DEFAULT_CATEGORIES, getDb } from './db/index'
 import { detectFuzzyDuplicates, matchStudent } from './matching'
 import { normalizeEmail, normalizePhone, titleCase } from './normalize'
 import { enrolDateFor, parseEnrolTerm, parseEnrolYear, parseYearMonthStamp } from './enrolDate'
@@ -42,6 +42,14 @@ function detectMapping(headers: string[], rows: Record<string, string>[] = []): 
     mapping[header] = field
   }
 
+  // A bare "ID" header is often just a spreadsheet row counter (1, 2, 3, …),
+  // not a student identifier — treating it as NSID would link unrelated
+  // students across sheets that happen to share row numbers.
+  for (const header of headers) {
+    if (header.toLowerCase().trim() !== 'id' || mapping[header] !== 'nsid') continue
+    if (looksLikeRowNumbers(rows.map((r) => r[header] ?? ''))) mapping[header] = 'ignore'
+  }
+
   // Cohort trackers sometimes carry the enrol year in a column with no
   // header text at all (a bare "2021"/"2022"/… column next to an unlabeled
   // index column) — nothing in the header name signals what it is, so the
@@ -60,6 +68,13 @@ function detectMapping(headers: string[], rows: Record<string, string>[] = []): 
   }
 
   return mapping
+}
+
+/** True if a column's values are all small whole numbers (1–9999), i.e. a row counter rather than an ID. */
+function looksLikeRowNumbers(values: string[]): boolean {
+  const nonEmpty = values.map((v) => v.trim()).filter((v) => v !== '')
+  if (nonEmpty.length < 2) return false
+  return nonEmpty.every((v) => /^\d{1,4}$/.test(v))
 }
 
 /** True if a column's values are almost entirely bare 4-digit years (e.g. "2021", "2022"). */
@@ -395,77 +410,83 @@ export function commitImport(request: ImportSheetRequest): ImportResult {
   let skippedBlankRows = 0
   const touchedIds = new Set<string>()
 
-  for (const row of rows) {
-    let firstName = firstNameCol ? row[firstNameCol] : ''
-    let lastName = lastNameCol ? row[lastNameCol] : ''
-    if (!firstName && !lastName && fullNameCol && row[fullNameCol]) {
-      const raw = row[fullNameCol].trim()
-      if (raw.includes(',')) {
-        // "Last, First" format (common in official roster exports)
-        const [last, first] = raw.split(',').map((s) => s.trim())
-        lastName = last ?? ''
-        firstName = first ?? ''
+  // One transaction for the whole sheet: a failure partway through rolls back
+  // every student/event/attendance it touched instead of leaving half a
+  // roster imported (and it's far faster than autocommitting each row).
+  const runImport = getDb().transaction((): number => {
+    for (const row of rows) {
+      let firstName = firstNameCol ? row[firstNameCol] : ''
+      let lastName = lastNameCol ? row[lastNameCol] : ''
+      if (!firstName && !lastName && fullNameCol && row[fullNameCol]) {
+        const raw = row[fullNameCol].trim()
+        if (raw.includes(',')) {
+          // "Last, First" format (common in official roster exports)
+          const [last, first] = raw.split(',').map((s) => s.trim())
+          lastName = last ?? ''
+          firstName = first ?? ''
+        } else {
+          const parts = raw.split(/\s+/)
+          firstName = parts[0] ?? ''
+          lastName = parts.slice(1).join(' ') ?? ''
+        }
+      }
+      firstName = titleCase(firstName)
+      lastName = titleCase(lastName)
+
+      const emails = emailColumns
+        .map((c) => normalizeEmail(row[c]))
+        .filter((e): e is string => !!e)
+      const phones = phoneColumns
+        .map((c) => normalizePhone(row[c]))
+        .filter((p): p is string => !!p)
+
+      if (!firstName && !lastName && emails.length === 0) {
+        skippedBlankRows++
+        continue
+      }
+
+      const extraFields: Record<string, string> = {}
+      for (const col of ignoredColumns) {
+        if (row[col]) extraFields[col] = row[col]
+      }
+
+      const { studentId, created } = matchStudent({
+        firstName: firstName || '(Unknown)',
+        lastName: lastName || '',
+        nsid: nsidCol ? row[nsidCol] : null,
+        emails,
+        phones,
+        college: collegeCol ? row[collegeCol] : null,
+        discipline: disciplineCol ? row[disciplineCol] : null,
+        degree: degreeCol ? row[degreeCol] : null,
+        program: programCol ? row[programCol] : null,
+        yearInProgram: yearCol ? row[yearCol] : null,
+        enrolTerm: yearCol ? parseEnrolTerm(row[yearCol]) : null
+      })
+
+      const { eventId, eventName } = eventIdForRow(yearCol ? row[yearCol] : null)
+      addAttendance(studentId, eventId, extraFields)
+      touchedIds.add(studentId)
+      rowsProcessed++
+
+      let summary = eventSummaries.get(eventId)
+      if (!summary) {
+        summary = { eventId, eventName, rowsProcessed: 0, newStudents: 0, matchedExisting: 0 }
+        eventSummaries.set(eventId, summary)
+      }
+      summary.rowsProcessed++
+      if (created) {
+        newStudents++
+        summary.newStudents++
       } else {
-        const parts = raw.split(/\s+/)
-        firstName = parts[0] ?? ''
-        lastName = parts.slice(1).join(' ') ?? ''
+        matchedExisting++
+        summary.matchedExisting++
       }
     }
-    firstName = titleCase(firstName)
-    lastName = titleCase(lastName)
 
-    const emails = emailColumns
-      .map((c) => normalizeEmail(row[c]))
-      .filter((e): e is string => !!e)
-    const phones = phoneColumns
-      .map((c) => normalizePhone(row[c]))
-      .filter((p): p is string => !!p)
-
-    if (!firstName && !lastName && emails.length === 0) {
-      skippedBlankRows++
-      continue
-    }
-
-    const extraFields: Record<string, string> = {}
-    for (const col of ignoredColumns) {
-      if (row[col]) extraFields[col] = row[col]
-    }
-
-    const { studentId, created } = matchStudent({
-      firstName: firstName || '(Unknown)',
-      lastName: lastName || '',
-      nsid: nsidCol ? row[nsidCol] : null,
-      emails,
-      phones,
-      college: collegeCol ? row[collegeCol] : null,
-      discipline: disciplineCol ? row[disciplineCol] : null,
-      degree: degreeCol ? row[degreeCol] : null,
-      program: programCol ? row[programCol] : null,
-      yearInProgram: yearCol ? row[yearCol] : null,
-      enrolTerm: yearCol ? parseEnrolTerm(row[yearCol]) : null
-    })
-
-    const { eventId, eventName } = eventIdForRow(yearCol ? row[yearCol] : null)
-    addAttendance(studentId, eventId, extraFields)
-    touchedIds.add(studentId)
-    rowsProcessed++
-
-    let summary = eventSummaries.get(eventId)
-    if (!summary) {
-      summary = { eventId, eventName, rowsProcessed: 0, newStudents: 0, matchedExisting: 0 }
-      eventSummaries.set(eventId, summary)
-    }
-    summary.rowsProcessed++
-    if (created) {
-      newStudents++
-      summary.newStudents++
-    } else {
-      matchedExisting++
-      summary.matchedExisting++
-    }
-  }
-
-  const newDuplicateSuggestions = detectFuzzyDuplicates(Array.from(touchedIds))
+    return detectFuzzyDuplicates(Array.from(touchedIds))
+  })
+  const newDuplicateSuggestions = runImport()
 
   return {
     events: Array.from(eventSummaries.values()),

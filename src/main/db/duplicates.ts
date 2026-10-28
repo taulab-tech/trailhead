@@ -64,11 +64,6 @@ export function dismissDuplicate(id: string): void {
   db.prepare("UPDATE possible_duplicates SET status = 'dismissed' WHERE id = ?").run(id)
 }
 
-export function markDuplicateMerged(id: string): void {
-  const db = getDb()
-  db.prepare("UPDATE possible_duplicates SET status = 'merged' WHERE id = ?").run(id)
-}
-
 export function getDuplicateById(id: string): PossibleDuplicate | null {
   const db = getDb()
   const row = db.prepare('SELECT * FROM possible_duplicates WHERE id = ?').get(id) as

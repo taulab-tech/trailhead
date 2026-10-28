@@ -22,8 +22,7 @@ import {
 import {
   dismissDuplicate,
   getDuplicateById,
-  listPossibleDuplicates,
-  markDuplicateMerged
+  listPossibleDuplicates
 } from './db/duplicates'
 import { createCategory, deleteCategory, listCategories, updateCategory } from './db/categories'
 import { getAttendanceDates, getDashboardStats, getEventStudentSets, getFunnelStats } from './db/dashboard'
@@ -75,8 +74,8 @@ export function registerIpcHandlers(): void {
     const dup = getDuplicateById(id)
     if (!dup) throw new Error('Duplicate suggestion not found')
     const mergeId = keepId === dup.studentA.id ? dup.studentB.id : dup.studentA.id
+    // mergeStudents deletes this suggestion along with the merged-away record.
     mergeStudents(keepId, mergeId)
-    markDuplicateMerged(id)
   })
 
   ipcMain.handle('dashboard:stats', () => getDashboardStats())

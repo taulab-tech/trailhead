@@ -60,8 +60,8 @@ function enrichIfBlank(studentId: string, fields: Record<string, string | null |
 
 /**
  * Matches (or creates) the student for a single imported attendance row.
- * Priority: NSID exact > email exact > unique exact normalized-name match.
- * Anything less certain is left for the fuzzy duplicate pass below rather
+ * Priority: NSID exact > email exact > unique exact normalized-name match
+ * (skipped when the NSIDs conflict). Anything less certain is left for the fuzzy duplicate pass below rather
  * than being auto-merged.
  */
 export function matchStudent(person: PersonRecord): MatchResult {
@@ -90,8 +90,12 @@ export function matchStudent(person: PersonRecord): MatchResult {
     const normalizedFullName = normalizeName(`${person.firstName} ${person.lastName}`)
     if (normalizedFullName) {
       const all = getAllStudentsMinimal()
+      // A name match is only trusted when the NSIDs don't contradict it — two
+      // different NSIDs means two different people who share a name.
       const exactMatches = all.filter(
-        (s) => normalizeName(`${s.firstName} ${s.lastName}`) === normalizedFullName
+        (s) =>
+          normalizeName(`${s.firstName} ${s.lastName}`) === normalizedFullName &&
+          !(normalizedNsid && s.nsid && s.nsid !== normalizedNsid)
       )
       if (exactMatches.length === 1) {
         studentId = exactMatches[0].id
@@ -151,6 +155,8 @@ export function detectFuzzyDuplicates(touchedIds: string[]): number {
       if (other.id === touched.id) continue
       // Avoid double-work: if both are in this batch, only compare when touched.id < other.id
       if (touchedSet.has(other.id) && touched.id > other.id) continue
+      // NSIDs are unique per person, so two different ones can never be a duplicate.
+      if (touched.nsid && other.nsid && touched.nsid !== other.nsid) continue
 
       const score = nameSimilarity(touched.normalized, other.normalized)
       if (score >= FUZZY_DUPLICATE_THRESHOLD) {

@@ -288,7 +288,7 @@ export function deleteStudent(id: string): void {
 /**
  * Merges `mergeId` into `keepId`: moves emails, phones and attendances over
  * (skipping ones that already exist on keepId), fills in any blank fields on
- * keepId from mergeId, deletes mergeId, and clears related duplicate flags.
+ * keepId from mergeId, deletes mergeId, and clears duplicate flags that involved mergeId.
  */
 export function mergeStudents(keepId: string, mergeId: string): void {
   if (keepId === mergeId) return
@@ -298,6 +298,9 @@ export function mergeStudents(keepId: string, mergeId: string): void {
   if (!keep || !merge) throw new Error('Both students must exist to merge')
 
   const tx = db.transaction(() => {
+    // NSIDs are unique, so release mergeId's before it can be copied onto keepId.
+    db.prepare('UPDATE students SET nsid = NULL WHERE id = ?').run(mergeId)
+
     // Fill in blanks on the surviving record.
     updateStudent(keepId, {
       nsid: keep.nsid ?? merge.nsid ?? undefined,
@@ -333,9 +336,12 @@ export function mergeStudents(keepId: string, mergeId: string): void {
       }
     }
 
-    db.prepare(
-      'DELETE FROM possible_duplicates WHERE student_a_id IN (?, ?) OR student_b_id IN (?, ?)'
-    ).run(mergeId, keepId, mergeId, keepId)
+    // Only suggestions involving the removed record are now stale — keepId's
+    // pending suggestions against other students still need review.
+    db.prepare('DELETE FROM possible_duplicates WHERE student_a_id = ? OR student_b_id = ?').run(
+      mergeId,
+      mergeId
+    )
 
     db.prepare('DELETE FROM students WHERE id = ?').run(mergeId)
   })

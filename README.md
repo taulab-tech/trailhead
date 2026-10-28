@@ -13,9 +13,11 @@ No AI, no network calls. Everything (including the database) lives on your compu
   You can rename the event, set a date, and review/adjust which spreadsheet column maps to
   which field before importing.
 - **Matching**: students are linked across events using, in order of confidence: student ID
-  (NSID) match, email match, then an exact normalized name match. Anything less certain (e.g.
-  "Chris Elash" vs "Christopher Elash") is left alone and flagged on the **Duplicates** screen
-  for you to merge or dismiss by hand — nothing is ever auto-merged on a guess.
+  (NSID) match, email match, then an exact normalized name match — but only when exactly one
+  existing student has that name and their NSIDs don't conflict. Anything less certain (e.g.
+  "Chris Elash" vs "Christopher Elash", or two existing students with the same name) is left
+  alone and flagged on the **Duplicates** screen for you to merge or dismiss by hand. Students
+  with two different NSIDs are never linked or flagged, since an NSID belongs to one person.
 - **Students**: searchable master list with every student's contact info, program/college info,
   and full event history. Edit any field, manually add/remove an event, or manually merge two
   records the matching missed.
@@ -37,6 +39,16 @@ This opens the app in a window. Your data is stored in a local SQLite file in yo
 folder (on Windows: `%APPDATA%\sigma-attendance-tracker\sigma-attendance.db`) — it persists
 between runs automatically.
 
+## Tests
+
+```bash
+npm test
+```
+
+Runs the database, matching, and import tests in `tests/` against a throwaway SQLite file
+(never your real data). They run under Electron's bundled Node, since that's what the
+SQLite driver is compiled for.
+
 ## Building an installer
 
 ```bash
@@ -54,3 +66,4 @@ Output lands in `dist/`. Run the matching `dist:*` script on the OS you want to 
 - `src/preload` — the narrow, typed bridge exposed to the renderer as `window.api`.
 - `src/renderer` — the React UI.
 - `src/shared` — types shared between main and renderer.
+- `tests` — automated tests (`npm test`).

@@ -5,10 +5,21 @@ export function normalizeEmail(email: string | null | undefined): string | null 
   return trimmed
 }
 
+/** Values people type into an ID column when there isn't one — never a real NSID. */
+const NSID_PLACEHOLDERS = new Set(['n/a', 'na', 'none', 'null', 'unknown', 'tbd', '-', '--', '?', '0'])
+
+/**
+ * Rosters record the same NSID both bare ("abc123") and as the campus email
+ * ("abc123@usask.ca"), so the domain is stripped to make the two match.
+ */
 export function normalizeNsid(nsid: string | null | undefined): string | null {
   if (!nsid) return null
-  const trimmed = nsid.trim().toLowerCase()
-  return trimmed || null
+  const trimmed = nsid
+    .trim()
+    .toLowerCase()
+    .replace(/@([a-z0-9-]+\.)*usask\.ca$/, '')
+  if (!trimmed || NSID_PLACEHOLDERS.has(trimmed)) return null
+  return trimmed
 }
 
 export function normalizeName(name: string | null | undefined): string {
