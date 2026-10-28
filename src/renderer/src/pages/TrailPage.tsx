@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import type { EventCategory, EventRecord } from '../../../shared/types'
 import { useDataVersion } from '../DataContext'
 import { colorForIndex } from '../lib/palette'
-import { seriesKeyFor } from '../lib/eventSeries'
+import { offeringYear, seriesKeyFor } from '../lib/eventSeries'
 import { trailStopLabel } from '../lib/stageLabel'
 import { STANDARD_GROUPS } from '../../../shared/standardGroups'
 
@@ -16,9 +16,12 @@ type DropTarget =
   | { kind: 'unassigned' }
 
 interface EventSeries {
+  /** The course/event name without its year, e.g. "431" or "AgTech Hackathon". */
   key: string
-  /** The series name for a multi-year series, or the event's own full name for a one-off. */
-  label: string
+  /** Shown in grey after the name: the year for a single offering, else how many there are. */
+  detail: string | null
+  /** Every offering's year, for the hover text. */
+  years: string[]
   ids: string[]
 }
 
@@ -33,8 +36,24 @@ function seriesFor(events: EventRecord[]): EventSeries[] {
     map.get(key)!.push(e)
   }
   return Array.from(map.entries())
-    .map(([key, evs]) => ({ key, label: evs.length === 1 ? evs[0].name : key, ids: evs.map((e) => e.id) }))
-    .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))
+    .map(([key, evs]) => {
+      const years = evs
+        .map((e) => offeringYear(e.name, e.date))
+        .filter((y): y is string => !!y)
+        .sort()
+      const distinctYears = new Set(years).size
+      // A one-off whose name already carries a year ("2024 AgTech Hackathon") needs no second one.
+      const detail =
+        evs.length === 1
+          ? /\b(19|20)\d{2}\b/.test(key)
+            ? null
+            : (years[0] ?? null)
+          : distinctYears === evs.length
+            ? `${evs.length} years`
+            : `${evs.length} offerings`
+      return { key, detail, years, ids: evs.map((e) => e.id) }
+    })
+    .sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }))
 }
 
 function GripIcon(): React.JSX.Element {
@@ -233,7 +252,7 @@ export default function TrailPage(): React.JSX.Element {
       isTarget={over === `group:${cat.id}`}
       onDragStart={(e) => startDrag(e, { kind: 'group', id: cat.id }, cat.name)}
       onDragEnd={endDrag}
-      onEventDragStart={(e, s) => startDrag(e, { kind: 'events', ids: s.ids }, s.label)}
+      onEventDragStart={(e, s) => startDrag(e, { kind: 'events', ids: s.ids }, s.key)}
       onRename={(name) => renameGroup(cat, name)}
       onDelete={() => deleteGroup(cat)}
       dropProps={dropProps(`group:${cat.id}`, { kind: 'group', id: cat.id }, 'events')}
@@ -394,7 +413,7 @@ export default function TrailPage(): React.JSX.Element {
                     <EventChip
                       key={s.key}
                       series={s}
-                      onDragStart={(e) => startDrag(e, { kind: 'events', ids: s.ids }, s.label)}
+                      onDragStart={(e) => startDrag(e, { kind: 'events', ids: s.ids }, s.key)}
                       onDragEnd={endDrag}
                     />
                   ))}
@@ -424,10 +443,14 @@ function EventChip({
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      title={series.ids.length > 1 ? `${series.ids.length} offerings — drag to move them all` : 'Drag to another group'}
+      title={
+        series.ids.length > 1
+          ? `${series.key}${series.years.length ? ` (${series.years.join(', ')})` : ''} — drag to move all ${series.ids.length}`
+          : 'Drag to another group'
+      }
     >
-      {series.label}
-      {series.ids.length > 1 && <span className="trail-event-count">×{series.ids.length}</span>}
+      {series.key}
+      {series.detail && <span className="trail-event-count">{series.detail}</span>}
     </span>
   )
 }

@@ -11,3 +11,10 @@ export function seriesKeyFor(eventName: string): string {
   const stripped = eventName.replace(YEAR_SUFFIX, '').trim()
   return stripped || eventName
 }
+
+/** The year an offering belongs to: its name's trailing year, else its date's year. */
+export function offeringYear(eventName: string, date: string | null): string | null {
+  const suffix = eventName.match(YEAR_SUFFIX)
+  if (suffix) return suffix[0].trim()
+  return date ? date.slice(0, 4) : null
+}
