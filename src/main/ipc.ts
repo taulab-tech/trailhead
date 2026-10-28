@@ -96,7 +96,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('db:backup', async () => {
     const win = BrowserWindow.getFocusedWindow()
-    const defaultName = `sigma-attendance-backup-${new Date().toISOString().slice(0, 10)}.db`
+    const defaultName = `trailhead-backup-${new Date().toISOString().slice(0, 10)}.db`
     const options: Electron.SaveDialogOptions = {
       title: 'Back up database',
       defaultPath: defaultName,
@@ -128,7 +128,7 @@ export function registerIpcHandlers(): void {
     const backupDir = getBackupDir()
     fs.mkdirSync(backupDir, { recursive: true })
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const safetyPath = path.join(backupDir, `sigma-attendance-before-wipe-${stamp}.db`)
+    const safetyPath = path.join(backupDir, `trailhead-before-wipe-${stamp}.db`)
     await backupDatabaseTo(safetyPath)
     wipeDatabase()
     return path.basename(safetyPath)

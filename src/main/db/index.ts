@@ -125,7 +125,7 @@ function renormalizeNsids(db: Database.Database): void {
 }
 
 function resolveDbPath(): string {
-  return process.env.SIGMA_DB_PATH ?? path.join(app.getPath('userData'), 'sigma-attendance.db')
+  return process.env.TRAILHEAD_DB_PATH ?? path.join(app.getPath('userData'), 'sigma-attendance.db')
 }
 
 export function getDb(): Database.Database {
@@ -191,12 +191,12 @@ export async function restoreDatabaseFrom(sourcePath: string): Promise<string> {
   } finally {
     probe.close()
   }
-  if (!looksValid) throw new Error('That file does not look like a SIGMA attendance database.')
+  if (!looksValid) throw new Error('That file does not look like a Trailhead database.')
 
   const backupDir = getBackupDir()
   fs.mkdirSync(backupDir, { recursive: true })
   const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const safetyPath = path.join(backupDir, `sigma-attendance-before-restore-${stamp}.db`)
+  const safetyPath = path.join(backupDir, `trailhead-before-restore-${stamp}.db`)
   await backupDatabaseTo(safetyPath)
 
   const liveDbPath = resolveDbPath()

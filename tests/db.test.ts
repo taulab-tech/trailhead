@@ -6,8 +6,8 @@ import path from 'path'
 
 // Must be set before the first getDb() call, which is lazy, so setting it
 // here (after the hoisted imports) still takes effect.
-const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigma-test-'))
-process.env.SIGMA_DB_PATH = path.join(tmpDir, 'test.db')
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'trailhead-test-'))
+process.env.TRAILHEAD_DB_PATH = path.join(tmpDir, 'test.db')
 
 import { closeDb, getDb, wipeDatabase } from '../src/main/db'
 import { createStudent, getStudentById, listStudents, mergeStudents } from '../src/main/db/students'
@@ -171,7 +171,7 @@ test('import only suggests a group the user actually has', () => {
   assert.equal(parseWorkbookForPreview(file).sheets[0].suggestedCategoryId, hackathon.id)
 })
 
-test('an ungrouped mixed-year sheet is dated by term, not as a SIGMA cohort', () => {
+test('an ungrouped mixed-year sheet is dated by its Fall/Winter term', () => {
   const file = writeCsv('cohorts.csv', ['First Name,Last Name,Year', 'Ann,Lee,2023', 'Bo,Park,2024'])
   const sheet = parseWorkbookForPreview(file).sheets[0]
   commitImport({

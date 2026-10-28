@@ -94,8 +94,8 @@ function FunnelSection({ stats, onNavigate }: { stats: DashboardStats; onNavigat
         </div>
       </div>
       <p className="text-dim" style={{ marginTop: -4 }}>
-        How students move from entry events (hackathons, inspiration events) through classes to SIGMA
-        itself{selectedYear === 'overall' ? '' : ` — ${selectedYear} only`}.
+        How students move along the trail, from their first event to the final
+        stop{selectedYear === 'overall' ? '' : ` — ${selectedYear} only`}.
       </p>
       {selectedYear !== 'overall' && undatedFunnelEvents > 0 && (
         <p className="text-faint" style={{ marginTop: -4 }}>

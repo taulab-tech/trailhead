@@ -6,14 +6,17 @@ const AUTO_BACKUPS_TO_KEEP = 14
 
 function datedBackupName(date: Date): string {
   const iso = date.toISOString().slice(0, 10) // YYYY-MM-DD
-  return `sigma-attendance-${iso}.db`
+  return `trailhead-${iso}.db`
 }
 
 function pruneOldBackups(dir: string): void {
+  // Daily backups made before the rename used a "sigma-attendance-" prefix;
+  // they're pruned alongside the current ones, oldest date first.
+  const dated = /^(?:trailhead|sigma-attendance)-(\d{4}-\d{2}-\d{2})\.db$/
   const files = fs
     .readdirSync(dir)
-    .filter((f) => /^sigma-attendance-\d{4}-\d{2}-\d{2}\.db$/.test(f))
-    .sort() // ISO dates sort chronologically as strings
+    .filter((f) => dated.test(f))
+    .sort((a, b) => a.match(dated)![1].localeCompare(b.match(dated)![1])) // ISO dates sort chronologically
   const excess = files.length - AUTO_BACKUPS_TO_KEEP
   for (let i = 0; i < excess; i++) {
     fs.unlinkSync(path.join(dir, files[i]))

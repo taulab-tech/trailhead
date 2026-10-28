@@ -76,7 +76,7 @@ const api = {
   wipeDatabase: (): Promise<string | null> => ipcRenderer.invoke('db:wipe')
 }
 
-export type SigmaApi = typeof api
+export type TrailheadApi = typeof api
 export type { ColumnMapping }
 
 contextBridge.exposeInMainWorld('api', api)

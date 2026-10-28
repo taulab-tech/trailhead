@@ -249,7 +249,7 @@ export default function TrailPage(): React.JSX.Element {
         <div>
           <h1>The Trail</h1>
           <p>
-            The path students take through SIGMA, from their first event to the program itself. Drag a group
+            The path students take, from their first event to the end of the trail. Drag a group
             to move it to another stop, or drag an event onto a different group.
           </p>
         </div>
@@ -269,14 +269,14 @@ export default function TrailPage(): React.JSX.Element {
           </div>
           <h2>Your trail is empty</h2>
           <p>
-            Groups are the stops on a student’s path through SIGMA. Start with the usual trail and adjust it,
+            Groups are the stops on a student’s path. Start with a typical trail and adjust it,
             or build your own from scratch.
           </p>
           <div className="trail-start-preview" aria-label="Standard trail preview">
             {[
               ['1', 'Hackathon · Inspiration Event'],
               ['2', 'Class'],
-              ['3', 'SIGMA']
+              ['3', 'Program']
             ].map(([n, label], i) => (
               <React.Fragment key={n}>
                 {i > 0 && <span className="trail-start-dash" />}

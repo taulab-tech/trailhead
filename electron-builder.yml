@@ -1,4 +1,4 @@
-appId: com.sigma.attendance
+appId: com.trailhead.app
 productName: Trailhead
 directories:
   buildResources: resources

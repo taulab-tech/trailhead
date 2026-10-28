@@ -1,9 +1,9 @@
 {
   "name": "sigma-attendance",
   "version": "1.0.0",
-  "description": "Local, offline attendance & alumni tracking tool for SIGMA programs/events",
+  "description": "Local, offline attendance and student-pathway tracking for programs and events",
   "main": "out/main/index.js",
-  "author": "SIGMA",
+  "author": "Trailhead",
   "private": true,
   "scripts": {
     "dev": "electron-vite dev",

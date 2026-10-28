@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx'
 import { findOrCreateEvent } from './db/events'
 import { addAttendance } from './db/students'
 import { getDb } from './db/index'
-import { findCategoryByName, getCategoryById } from './db/categories'
+import { findCategoryByName } from './db/categories'
 import { detectFuzzyDuplicates, matchStudent } from './matching'
 import { normalizeEmail, normalizePhone, titleCase } from './normalize'
 import { enrolDateFor, parseEnrolTerm, parseEnrolYear, parseYearMonthStamp } from './enrolDate'
@@ -192,11 +192,6 @@ function categoryId(name: string): string | null {
   return findCategoryByName(name)?.id ?? null
 }
 
-/** SIGMA-program events are dated differently (June 1st) from class-term events. */
-function isSigmaGroup(id: string | null): boolean {
-  return !!id && getCategoryById(id)?.name.toLowerCase() === 'sigma'
-}
-
 /** Best-effort guess at which funnel category a sheet belongs to, based on its name. */
 function guessCategory(eventName: string, sheetName: string, fileName: string): string | null {
   const text = `${eventName} ${sheetName}`.toLowerCase()
@@ -204,8 +199,8 @@ function guessCategory(eventName: string, sheetName: string, fileName: string): 
   if (text.includes('hackathon')) return categoryId('Hackathon')
   if (/\b(inspiration|speaker|fireside|talk|seminar)\b/.test(text)) return categoryId('Inspiration Event')
   if (/\b(social|holiday|mixer|meet.?and.?greet)\b/.test(text)) return categoryId('Social')
-  if (/\b(incubator|tic|sigma)\b/.test(text)) return categoryId('SIGMA')
-  // Bare course-code sheets (e.g. "431", "450") are the SIGMA-affiliated classes.
+  if (/\b(incubator|accelerator)\b/.test(text)) return categoryId('Program')
+  // Bare course-code sheets (e.g. "431", "450") are class rosters.
   if (/^\d{3,4}$/.test(sheetName.trim())) return categoryId('Class')
   // Registrar "…classlist [GE] <code>.xls" exports are always GE course rosters,
   // even when the sheet tab itself is just a generic "Class List Summary" label.
@@ -215,7 +210,7 @@ function guessCategory(eventName: string, sheetName: string, fileName: string): 
 }
 
 /**
- * Registrar class-list exports for SIGMA-affiliated GE courses are named
+ * Registrar class-list exports for GE courses are named
  * "<yearmonth>_<CRN>_classlist[ GE] <code>.xls" — the course code is always
  * the last number before the extension, whether or not "GE" literally
  * appears — while the sheet tab itself carries no course identity at all
@@ -246,28 +241,15 @@ function parseFileNameDateAndName(fileName: string): { date: string; name: strin
 /**
  * Best-effort guess at the event's date from the sheet/file/event name. An
  * explicit "MM_DD_YYYY" filename stamp is the most precise signal available
- * and wins outright. Otherwise, SIGMA-program events always land on June
- * 1st of whatever year is found — SIGMA doesn't run on the Fall/Winter
- * class-term calendar the other categories do, so that rule doesn't apply
- * to it. Everything else tries an explicit "Fall 2024"/"Winter 2024" marker
- * first, falling back to a registrar-style "202209" year-month stamp
- * commonly found in export filenames.
+ * and wins outright. Otherwise an explicit "Fall 2024"/"Winter 2024" marker
+ * is tried first, falling back to a registrar-style "202209" year-month
+ * stamp commonly found in export filenames.
  */
-function guessDate(
-  eventName: string,
-  sheetName: string,
-  fileName: string,
-  resolvedCategoryId: string | null
-): string | null {
+function guessDate(eventName: string, sheetName: string, fileName: string): string | null {
   const exact = parseFileNameDateAndName(fileName)
   if (exact) return exact.date
 
   const text = `${eventName} ${sheetName} ${fileName}`
-
-  if (isSigmaGroup(resolvedCategoryId)) {
-    const year = parseEnrolYear(text) ?? parseYearMonthStamp(text)?.year ?? null
-    return year ? `${year}-06-01` : null
-  }
 
   const year = parseEnrolYear(text)
   const term = parseEnrolTerm(text)
@@ -326,7 +308,7 @@ export function parseWorkbookForPreview(filePath: string): ParsedWorkbook {
     sheets.push({
       sheetName,
       suggestedEventName,
-      suggestedDate: guessDate(suggestedEventName, sheetName, fileName, suggestedCategoryId),
+      suggestedDate: guessDate(suggestedEventName, sheetName, fileName),
       suggestedCategoryId,
       headers,
       rowCount: rows.length,
@@ -360,20 +342,18 @@ export function commitImport(request: ImportSheetRequest): ImportResult {
 
   // Rosters with a mapped year column often get exported as one sheet
   // spanning several cohorts (a "831" class export with a mixed 2020-2025
-  // Enrol Year column, or a SIGMA cohort tracker listing every year's
+  // Enrol Year column, or a program cohort tracker listing every year's
   // members in one sheet). Split those into one event per distinct year
-  // found in that column ("831 2024", "831 2025", "SIGMA 2024", …) instead
+  // found in that column ("831 2024", "831 2025", …) instead
   // of dumping every cohort into a single event. This isn't limited to any
   // one category — rows whose year cell doesn't parse as a real calendar
   // year just fall back to the single sheet-level event below, so enabling
-  // it broadly is safe. Only the *date* assigned to each split year differs
-  // by category (SIGMA → June 1st; everything else → Fall/Winter term).
+  // it broadly is safe. Each split year is dated to its Fall/Winter term.
   const splitByYear = !!yearCol
   const eventSummaries = new Map<string, ImportEventSummary>()
   const eventIds = new Map<string, string>()
 
   function dateForSplitYear(year: number, rawYear: string): string {
-    if (isSigmaGroup(request.categoryId)) return `${year}-06-01`
     const term = parseEnrolTerm(rawYear) ?? 'fall'
     return enrolDateFor(year, term)
   }

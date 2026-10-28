@@ -300,7 +300,7 @@ export default function FunnelDiagram({
     })
 
     // Flows between EVERY pair of columns with i < j, not just adjacent ones
-    // — a student can go Hackathon straight to SIGMA, skipping Class
+    // — a student can go Hackathon straight to Program, skipping Class
     // entirely, and that needs its own traceable line rather than being
     // lumped in with students who have no tracked history at all.
     interface Flow {

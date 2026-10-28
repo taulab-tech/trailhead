@@ -1,7 +1,7 @@
-import type { SigmaApi } from './index'
+import type { TrailheadApi } from './index'
 
 declare global {
   interface Window {
-    api: SigmaApi
+    api: TrailheadApi
   }
 }

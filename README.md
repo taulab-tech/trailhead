@@ -1,8 +1,8 @@
 # Trailhead
 
-SIGMA's attendance tracker.
+Attendance and student-pathway tracking for programs and events.
 
-A local, offline desktop app for tracking student attendance across SIGMA programs and events.
+A local, offline desktop app for tracking student attendance across programs and events.
 Drag in event/attendance spreadsheets, and it builds a master student list — automatically
 linking repeat students across events, with a manual review screen for anything the automatic
 matching couldn't confidently resolve.
@@ -25,6 +25,8 @@ No AI, no network calls. Everything (including the database) lives on your compu
   records the matching missed.
 - **Programs & Events**: every imported roster, with attendee lists and the ability to rename,
   re-date, or delete an accidentally-imported sheet.
+- **The Trail**: drag-and-drop the groups (Hackathon, Class, Program, …) into the order students
+  move through them, and drag events between groups. A new database starts with an empty trail.
 - **Dashboard**: aggregate stats — unique students, repeat-attendance rate, breakdowns by
   college/discipline/year, and top programs by attendance.
 
@@ -38,7 +40,7 @@ npm run dev
 ```
 
 This opens the app in a window. Your data is stored in a local SQLite file in your OS user-data
-folder (on Windows: `%APPDATA%\sigma-attendance-tracker\sigma-attendance.db`) — it persists
+folder (on Windows: `%APPDATA%\sigma-attendance\sigma-attendance.db`) — it persists
 between runs automatically.
 
 ## Tests

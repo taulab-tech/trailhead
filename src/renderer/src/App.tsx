@@ -122,7 +122,7 @@ function Shell(): React.JSX.Element {
           </div>
           <div>
             <div className="brand-name">Trailhead</div>
-            <div className="brand-sub">SIGMA Attendance Tracker</div>
+            <div className="brand-sub">Attendance &amp; pathways</div>
           </div>
         </div>
         <div className="nav-section-label">Workspace</div>
