@@ -15,7 +15,7 @@ import { listPossibleDuplicates, suggestDuplicate } from '../src/main/db/duplica
 import { listEvents } from '../src/main/db/events'
 import { createCategory, deleteCategory, listCategories } from '../src/main/db/categories'
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
-import { commitImport, parseWorkbookForPreview } from '../src/main/importer'
+import { commitImport, parseWorkbookForPreview, previewImport } from '../src/main/importer'
 
 beforeEach(() => wipeDatabase())
 
@@ -213,4 +213,59 @@ test('registrar class lists are named from the file, with or without a subject c
 test('common student-number headings are recognised as the student ID', () => {
   const file = writeCsv('roster.csv', ['Student Number,First Name,Last Name', '11223344,Ann,Lee', '55667788,Bo,Park'])
   assert.equal(parseWorkbookForPreview(file).sheets[0].suggestedMapping['Student Number'], 'nsid')
+})
+
+test('the import preview reports each row without saving anything', () => {
+  matchStudent(person('Ann', 'Lee', 'abc123'))
+  const file = writeCsv('preview.csv', [
+    'Student ID,First Name,Last Name',
+    'abc123,Ann,Lee',
+    'zzz999,Bo,Park',
+    ',,',
+    'zzz999,Bo,Park'
+  ])
+  const sheet = parseWorkbookForPreview(file).sheets[0]
+  const request = {
+    filePath: file,
+    fileName: 'preview.csv',
+    sheetName: sheet.sheetName,
+    eventName: 'Preview',
+    eventDate: '2025-01-01',
+    categoryId: null,
+    mapping: sheet.suggestedMapping,
+    rows: [...sheet.rows, { 'Student ID': '', 'First Name': '', 'Last Name': '' }]
+  }
+
+  const preview = previewImport(request)
+
+  assert.deepEqual(
+    preview.rows.map((r) => r.status),
+    ['existing', 'new', 'repeat', 'skipped']
+  )
+  assert.equal(preview.rows[0].matchedName, 'Ann Lee')
+  assert.equal(preview.rows[2].repeatOfRow, 1)
+  assert.equal(listStudents().length, 1)
+  assert.equal(listEvents().length, 0)
+})
+
+test('edited and removed rows are what gets imported', () => {
+  const file = writeCsv('edit.csv', ['First Name,Last Name', 'Ann,Lee', 'Bo,Prak', 'Typo,Row'])
+  const sheet = parseWorkbookForPreview(file).sheets[0]
+  const [ann, bo] = sheet.rows
+
+  commitImport({
+    filePath: file,
+    fileName: 'edit.csv',
+    sheetName: sheet.sheetName,
+    eventName: 'Edited',
+    eventDate: '2025-01-01',
+    categoryId: null,
+    mapping: sheet.suggestedMapping,
+    rows: [ann, { ...bo, 'Last Name': 'Park' }]
+  })
+
+  assert.deepEqual(
+    listStudents().map((s) => `${s.firstName} ${s.lastName}`).sort(),
+    ['Ann Lee', 'Bo Park']
+  )
 })

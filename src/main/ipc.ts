@@ -1,7 +1,7 @@
 import { dialog, ipcMain, BrowserWindow } from 'electron'
 import fs from 'fs'
 import path from 'path'
-import { parseWorkbookForPreview, commitImport } from './importer'
+import { parseWorkbookForPreview, commitImport, previewImport } from './importer'
 import { backupDatabaseTo, getBackupDir, restoreDatabaseFrom, wipeDatabase } from './db'
 import {
   addAttendance,
@@ -43,6 +43,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('import:preview', (_e, filePath: string) => parseWorkbookForPreview(filePath))
   ipcMain.handle('import:commit', (_e, request: ImportSheetRequest) => commitImport(request))
+  ipcMain.handle('import:previewRows', (_e, request: ImportSheetRequest) => previewImport(request))
 
   ipcMain.handle('students:list', (_e, search?: string) => listStudents(search))
   ipcMain.handle('students:detail', (_e, id: string) => getStudentDetail(id))

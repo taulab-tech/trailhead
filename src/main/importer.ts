@@ -1,7 +1,7 @@
 import path from 'path'
 import * as XLSX from 'xlsx'
 import { findOrCreateEvent } from './db/events'
-import { addAttendance } from './db/students'
+import { addAttendance, getStudentById } from './db/students'
 import { getDb } from './db/index'
 import { findCategoryByName } from './db/categories'
 import { detectFuzzyDuplicates, matchStudent } from './matching'
@@ -10,11 +10,13 @@ import { enrolDateFor, parseEnrolTerm, parseEnrolYear, parseYearMonthStamp } fro
 import type {
   ColumnMapping,
   ImportEventSummary,
+  ImportPreview,
   ImportResult,
   ImportSheetRequest,
   MappableField,
   ParsedSheet,
-  ParsedWorkbook
+  ParsedWorkbook,
+  RowOutcome
 } from '../shared/types'
 
 function readWorkbook(filePath: string): XLSX.WorkBook {
@@ -315,6 +317,7 @@ export function parseWorkbookForPreview(filePath: string): ParsedWorkbook {
       headers,
       rowCount: rows.length,
       sampleRows: rows.slice(0, 5),
+      rows,
       suggestedMapping,
       yearSplitPreview: yearSplitPreview(headers, rows, suggestedMapping)
     })
@@ -323,11 +326,45 @@ export function parseWorkbookForPreview(filePath: string): ParsedWorkbook {
   return { fileName, filePath, sheets }
 }
 
+/** Thrown at the end of a dry run so the transaction rolls every write back. */
+class DryRunRollback extends Error {}
+
 export function commitImport(request: ImportSheetRequest): ImportResult {
-  const workbook = readWorkbook(request.filePath)
-  const ws = workbook.Sheets[request.sheetName]
-  if (!ws) throw new Error(`Sheet "${request.sheetName}" not found in ${request.fileName}`)
-  const { headers, rows } = parseSheet(ws)
+  return runSheetImport(request, false).result
+}
+
+/**
+ * Runs the real import for `request` and then rolls it back, reporting what
+ * would happen to each row — so the preview always agrees with the import.
+ */
+export function previewImport(request: ImportSheetRequest): ImportPreview {
+  const { result, rowOutcomes } = runSheetImport(request, true)
+  return {
+    rows: rowOutcomes,
+    newStudents: result.newStudents,
+    matchedExisting: result.matchedExisting,
+    skippedBlankRows: result.skippedBlankRows,
+    newDuplicateSuggestions: result.newDuplicateSuggestions
+  }
+}
+
+function runSheetImport(
+  request: ImportSheetRequest,
+  dryRun: boolean
+): { result: ImportResult; rowOutcomes: RowOutcome[] } {
+  // Rows edited on the review screen are imported as given; otherwise the
+  // sheet is read fresh from the file. The mapping always lists every header.
+  let headers: string[]
+  let rows: Record<string, string>[]
+  if (request.rows) {
+    headers = Object.keys(request.mapping)
+    rows = request.rows
+  } else {
+    const workbook = readWorkbook(request.filePath)
+    const ws = workbook.Sheets[request.sheetName]
+    if (!ws) throw new Error(`Sheet "${request.sheetName}" not found in ${request.fileName}`)
+    ;({ headers, rows } = parseSheet(ws))
+  }
 
   const emailColumns = headers.filter((h) => request.mapping[h] === 'email')
   const phoneColumns = headers.filter((h) => request.mapping[h] === 'phone')
@@ -398,12 +435,16 @@ export function commitImport(request: ImportSheetRequest): ImportResult {
   let matchedExisting = 0
   let skippedBlankRows = 0
   const touchedIds = new Set<string>()
+  const rowOutcomes: RowOutcome[] = []
+  // Students created by this sheet, by the row that created them, so a later
+  // row for the same person reads as a repeat rather than an existing record.
+  const createdByRow = new Map<string, number>()
 
   // One transaction for the whole sheet: a failure partway through rolls back
   // every student/event/attendance it touched instead of leaving half a
   // roster imported (and it's far faster than autocommitting each row).
   const runImport = getDb().transaction((): number => {
-    for (const row of rows) {
+    for (const [rowIndex, row] of rows.entries()) {
       let firstName = firstNameCol ? row[firstNameCol] : ''
       let lastName = lastNameCol ? row[lastNameCol] : ''
       if (!firstName && !lastName && fullNameCol && row[fullNameCol]) {
@@ -431,6 +472,7 @@ export function commitImport(request: ImportSheetRequest): ImportResult {
 
       if (!firstName && !lastName && emails.length === 0) {
         skippedBlankRows++
+        rowOutcomes.push({ status: 'skipped' })
         continue
       }
 
@@ -467,22 +509,47 @@ export function commitImport(request: ImportSheetRequest): ImportResult {
       if (created) {
         newStudents++
         summary.newStudents++
+        createdByRow.set(studentId, rowIndex)
+        rowOutcomes.push({ status: 'new' })
       } else {
         matchedExisting++
         summary.matchedExisting++
+        const repeatOf = createdByRow.get(studentId)
+        if (repeatOf !== undefined) {
+          rowOutcomes.push({ status: 'repeat', repeatOfRow: repeatOf })
+        } else if (dryRun) {
+          const s = getStudentById(studentId)
+          rowOutcomes.push({ status: 'existing', matchedName: s ? `${s.firstName} ${s.lastName}`.trim() : undefined })
+        } else {
+          rowOutcomes.push({ status: 'existing' })
+        }
       }
     }
 
-    return detectFuzzyDuplicates(Array.from(touchedIds))
+    const flagged = detectFuzzyDuplicates(Array.from(touchedIds))
+    if (dryRun) {
+      newDuplicateSuggestions = flagged
+      throw new DryRunRollback()
+    }
+    return flagged
   })
-  const newDuplicateSuggestions = runImport()
+
+  let newDuplicateSuggestions = 0
+  try {
+    newDuplicateSuggestions = runImport()
+  } catch (err) {
+    if (!(err instanceof DryRunRollback)) throw err
+  }
 
   return {
-    events: Array.from(eventSummaries.values()),
-    rowsProcessed,
-    newStudents,
-    matchedExisting,
-    newDuplicateSuggestions,
-    skippedBlankRows
+    result: {
+      events: Array.from(eventSummaries.values()),
+      rowsProcessed,
+      newStudents,
+      matchedExisting,
+      newDuplicateSuggestions,
+      skippedBlankRows
+    },
+    rowOutcomes
   }
 }

@@ -9,6 +9,7 @@ import type {
 } from '../../../shared/types'
 import { FIELD_LABELS, FIELD_OPTIONS } from '../lib/fieldLabels'
 import CategoryPicker from '../components/CategoryPicker'
+import ImportRowsReview, { type ReviewRow } from '../components/ImportRowsReview'
 
 interface SheetConfig {
   key: string
@@ -20,7 +21,9 @@ interface SheetConfig {
   eventDate: string
   categoryId: string | null
   mapping: ColumnMapping
-  showMapping: boolean
+  view: 'students' | 'mapping' | null
+  rows: ReviewRow[]
+  removed: ReviewRow[]
 }
 
 function sheetKey(filePath: string, sheetName: string): string {
@@ -56,7 +59,9 @@ export default function ImportPage({ onImported }: { onImported: () => void }): 
           eventDate: sheet.suggestedDate ?? '',
           categoryId: sheet.suggestedCategoryId,
           mapping: { ...sheet.suggestedMapping },
-          showMapping: false
+          view: 'students' as const,
+          rows: sheet.rows.map((values, id) => ({ id, values })),
+          removed: []
         }))
       setSheets((prev) => {
         const existingKeys = new Set(prev.map((s) => s.key))
@@ -114,6 +119,44 @@ export default function ImportPage({ onImported }: { onImported: () => void }): 
     )
   }
 
+  const editRow = (key: string, id: number, header: string, value: string): void => {
+    setSheets((prev) =>
+      prev.map((s) =>
+        s.key === key
+          ? { ...s, rows: s.rows.map((r) => (r.id === id ? { ...r, values: { ...r.values, [header]: value } } : r)) }
+          : s
+      )
+    )
+  }
+
+  const removeRow = (key: string, id: number): void => {
+    setSheets((prev) =>
+      prev.map((s) => {
+        if (s.key !== key) return s
+        const row = s.rows.find((r) => r.id === id)
+        return row ? { ...s, rows: s.rows.filter((r) => r.id !== id), removed: [...s.removed, row] } : s
+      })
+    )
+  }
+
+  const restoreRows = (key: string): void => {
+    setSheets((prev) =>
+      prev.map((s) =>
+        s.key === key ? { ...s, rows: [...s.rows, ...s.removed].sort((a, b) => a.id - b.id), removed: [] } : s
+      )
+    )
+  }
+
+  const baseRequest = (s: SheetConfig) => ({
+    filePath: s.filePath,
+    fileName: s.fileName,
+    sheetName: s.sheet.sheetName,
+    eventName: s.eventName.trim() || s.sheet.suggestedEventName,
+    eventDate: s.eventDate.trim() || null,
+    categoryId: s.categoryId,
+    mapping: s.mapping
+  })
+
   // A sheet that splits by year gets a computed per-year date for every row
   // that has a parseable year — the sheet-level date is only a fallback for
   // any leftover rows that don't, so it shouldn't block import the way it
@@ -139,13 +182,8 @@ export default function ImportPage({ onImported }: { onImported: () => void }): 
     try {
       for (const s of included) {
         const result = await window.api.commitImport({
-          filePath: s.filePath,
-          fileName: s.fileName,
-          sheetName: s.sheet.sheetName,
-          eventName: s.eventName.trim() || s.sheet.suggestedEventName,
-          eventDate: s.eventDate.trim() || null,
-          categoryId: s.categoryId,
-          mapping: s.mapping
+          ...baseRequest(s),
+          rows: s.rows.map((r) => r.values)
         })
         collected.push(result)
       }
@@ -277,7 +315,9 @@ export default function ImportPage({ onImported }: { onImported: () => void }): 
                 />
                 <div style={{ flex: 1 }}>
                   <div className="text-faint mono" style={{ fontSize: 11, marginBottom: 6 }}>
-                    {s.fileName} → sheet &quot;{s.sheet.sheetName}&quot; · {s.sheet.rowCount} rows
+                    {s.fileName} → sheet &quot;{s.sheet.sheetName}&quot; · {s.rows.length} row
+                    {s.rows.length === 1 ? '' : 's'}
+                    {s.removed.length > 0 ? ` (${s.removed.length} removed)` : ''}
                   </div>
                   <div className="field-row-3">
                     <div>
@@ -330,14 +370,39 @@ export default function ImportPage({ onImported }: { onImported: () => void }): 
                       </p>
                     )}
 
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => updateSheet(s.key, { showMapping: !s.showMapping })}
-                  >
-                    {s.showMapping ? 'Hide column mapping' : 'Review column mapping'}
-                  </button>
+                  <div className="sheet-tabs" role="tablist">
+                    <button
+                      role="tab"
+                      aria-selected={s.view === 'students'}
+                      className={`sheet-tab ${s.view === 'students' ? 'is-active' : ''}`}
+                      onClick={() => updateSheet(s.key, { view: s.view === 'students' ? null : 'students' })}
+                    >
+                      Students <span className="sheet-tab-count">{s.rows.length}</span>
+                    </button>
+                    <button
+                      role="tab"
+                      aria-selected={s.view === 'mapping'}
+                      className={`sheet-tab ${s.view === 'mapping' ? 'is-active' : ''}`}
+                      onClick={() => updateSheet(s.key, { view: s.view === 'mapping' ? null : 'mapping' })}
+                    >
+                      Column mapping
+                    </button>
+                  </div>
 
-                  {s.showMapping && (
+                  {s.view === 'students' && (
+                    <ImportRowsReview
+                      request={baseRequest(s)}
+                      headers={s.sheet.headers}
+                      mapping={s.mapping}
+                      rows={s.rows}
+                      removed={s.removed}
+                      onEdit={(id, header, value) => editRow(s.key, id, header, value)}
+                      onRemove={(id) => removeRow(s.key, id)}
+                      onRestoreAll={() => restoreRows(s.key)}
+                    />
+                  )}
+
+                  {s.view === 'mapping' && (
                     <table className="mapping-table" style={{ marginTop: 12 }}>
                       <thead>
                         <tr>

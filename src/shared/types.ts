@@ -75,6 +75,8 @@ export interface ParsedSheet {
   headers: string[]
   rowCount: number
   sampleRows: Record<string, string>[]
+  /** Every data row, for the review-and-edit table on the import screen. */
+  rows: Record<string, string>[]
   suggestedMapping: ColumnMapping
   /** Set when suggestedMapping flags a year column with 2+ distinct years — this sheet will split into one event per year on import. */
   yearSplitPreview: { column: string; years: number[] } | null
@@ -110,6 +112,23 @@ export interface ImportSheetRequest {
   eventDate: string | null
   categoryId: string | null
   mapping: ColumnMapping
+  /** The rows to import, as reviewed/edited by the user. Omitted = read the sheet from the file. */
+  rows?: Record<string, string>[]
+}
+
+/** What importing a row would do. `repeatOfRow` is a 0-based index into the same request's rows. */
+export interface RowOutcome {
+  status: 'new' | 'existing' | 'repeat' | 'skipped'
+  matchedName?: string
+  repeatOfRow?: number
+}
+
+export interface ImportPreview {
+  rows: RowOutcome[]
+  newStudents: number
+  matchedExisting: number
+  skippedBlankRows: number
+  newDuplicateSuggestions: number
 }
 
 export interface ImportEventSummary {

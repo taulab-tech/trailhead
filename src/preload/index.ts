@@ -7,6 +7,7 @@ import type {
   EventDetail,
   EventRecord,
   FunnelStats,
+  ImportPreview,
   ImportResult,
   ImportSheetRequest,
   NewStudentInput,
@@ -22,6 +23,8 @@ const api = {
 
   previewImport: (filePath: string): Promise<ParsedWorkbook> =>
     ipcRenderer.invoke('import:preview', filePath),
+  previewImportRows: (request: ImportSheetRequest): Promise<ImportPreview> =>
+    ipcRenderer.invoke('import:previewRows', request),
   commitImport: (request: ImportSheetRequest): Promise<ImportResult> =>
     ipcRenderer.invoke('import:commit', request),
 

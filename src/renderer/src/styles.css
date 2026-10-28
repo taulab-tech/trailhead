@@ -1127,3 +1127,247 @@ p.trail-start-note {
   font-size: 12.5px;
   color: var(--text-faint);
 }
+
+/* ---------- Import review ---------- */
+
+.sheet-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.sheet-tab:hover {
+  color: var(--text);
+}
+
+.sheet-tab.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.sheet-tab-count {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--bg-elevated-2);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-tab.is-active .sheet-tab-count {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.review-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 12px 2px;
+  font-size: 13px;
+}
+
+.review-summary .spacer {
+  flex: 1;
+}
+
+.review-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-stat b {
+  font-variant-numeric: tabular-nums;
+}
+
+.review-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.review-dot.is-new {
+  background: var(--good);
+}
+
+.review-dot.is-existing {
+  background: #2f6b9a;
+}
+
+.review-dot.is-repeat {
+  background: #8a948f;
+}
+
+.review-dot.is-skipped {
+  background: var(--warn);
+}
+
+.review-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.review-scroll {
+  max-height: 440px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.review-table {
+  font-size: 13px;
+}
+
+.review-table thead th {
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.review-source {
+  display: block;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: #8f9893;
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+.review-table tbody tr:hover {
+  background: #f7f9f8;
+  cursor: default;
+}
+
+.review-table tbody td {
+  padding: 3px 6px;
+}
+
+.review-table tr.is-skipped td {
+  background: #fdf9ef;
+}
+
+.review-num {
+  width: 44px;
+  text-align: right;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  padding-right: 10px !important;
+}
+
+.review-status-col {
+  width: 1%;
+  white-space: nowrap;
+}
+
+input.review-cell {
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  padding: 5px 6px;
+  font-size: 13px;
+  border-radius: 4px;
+}
+
+input.review-cell:hover {
+  border-color: var(--border);
+  background: var(--bg-elevated);
+}
+
+input.review-cell:focus {
+  border-color: var(--accent-dim);
+  background: var(--bg-elevated);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.review-status {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.review-status.is-new {
+  background: var(--good-soft);
+  color: var(--good);
+  border-color: #c9e3d4;
+}
+
+.review-status.is-existing {
+  background: #e8f0f7;
+  color: #2f6b9a;
+  border-color: #c9dbea;
+}
+
+.review-status.is-repeat {
+  background: var(--bg-elevated-2);
+  color: var(--text-dim);
+  border-color: var(--border);
+}
+
+.review-status.is-skipped {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-color: #efd9ab;
+}
+
+.review-actions {
+  width: 36px;
+  text-align: center;
+}
+
+.review-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  padding: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  opacity: 0.55;
+}
+
+.review-table tbody tr:hover .review-remove,
+.review-remove:focus-visible {
+  opacity: 1;
+}
+
+.review-remove:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.review-note {
+  margin: 10px 2px 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
