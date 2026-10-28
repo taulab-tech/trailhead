@@ -4,6 +4,16 @@ import { registerIpcHandlers } from './ipc'
 import { closeDb, getDb } from './db'
 import { runAutoBackup } from './backup'
 import { harmonizeClasslistEventNames } from './importer'
+import { migrateLegacyDataDir } from './dataDir'
+
+// Dev runs and installed builds share one data folder (%APPDATA%\Trailhead on
+// Windows), whatever the package or product name. Test harnesses point
+// TRAILHEAD_DB_PATH at a throwaway database and keep their own folder.
+if (!process.env.TRAILHEAD_DB_PATH) {
+  const dataDir = join(app.getPath('appData'), 'Trailhead')
+  app.setPath('userData', dataDir)
+  migrateLegacyDataDir(join(app.getPath('appData'), 'sigma-attendance'), dataDir)
+}
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({

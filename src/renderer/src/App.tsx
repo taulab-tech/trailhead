@@ -6,6 +6,7 @@ import EventsPage from './pages/EventsPage'
 import DuplicatesPage from './pages/DuplicatesPage'
 import DashboardPage from './pages/DashboardPage'
 import TrailPage from './pages/TrailPage'
+import Logo from './components/Logo'
 
 type Page = 'import' | 'students' | 'events' | 'duplicates' | 'dashboard' | 'groups'
 
@@ -118,7 +119,7 @@ function Shell(): React.JSX.Element {
       <div className="sidebar">
         <div className="brand">
           <div className="brand-mark">
-            <Icon d="M2 20L9 6l4.5 7.5L16 10l6 10z" size={20} />
+            <Logo size={34} />
           </div>
           <div>
             <div className="brand-name">Trailhead</div>

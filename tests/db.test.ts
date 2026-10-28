@@ -17,6 +17,7 @@ import { createCategory, deleteCategory, listCategories } from '../src/main/db/c
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
 import { buildPositionQuery, isLinkedInProfile, parseLinkedInResult } from '../src/main/positionLookup'
 import { updateStudent } from '../src/main/db/students'
+import { migrateLegacyDataDir } from '../src/main/dataDir'
 import { commitImport, harmonizeClasslistEventNames, parseWorkbookForPreview, previewImport } from '../src/main/importer'
 
 beforeEach(() => wipeDatabase())
@@ -415,4 +416,24 @@ test('a saved position is kept when two students are merged', () => {
   const kept = getStudentById(keep)
   assert.equal(kept?.position, 'Engineer · NORTHWIND')
   assert.equal(kept?.positionUrl, 'https://www.linkedin.com/in/x')
+})
+
+test('data from the old sigma-attendance folder is copied once, never over existing data', () => {
+  const legacy = path.join(tmpDir, 'legacy')
+  const current = path.join(tmpDir, 'current')
+  fs.mkdirSync(path.join(legacy, 'backups'), { recursive: true })
+  fs.writeFileSync(path.join(legacy, 'sigma-attendance.db'), 'old-db')
+  fs.writeFileSync(path.join(legacy, 'sigma-attendance.db-wal'), 'old-wal')
+  fs.writeFileSync(path.join(legacy, 'backups', 'sigma-attendance-2026-10-01.db'), 'backup')
+
+  migrateLegacyDataDir(legacy, current)
+
+  assert.equal(fs.readFileSync(path.join(current, 'trailhead.db'), 'utf8'), 'old-db')
+  assert.equal(fs.readFileSync(path.join(current, 'trailhead.db-wal'), 'utf8'), 'old-wal')
+  assert.ok(fs.existsSync(path.join(current, 'backups', 'sigma-attendance-2026-10-01.db')))
+  assert.ok(fs.existsSync(path.join(legacy, 'sigma-attendance.db')), 'the old folder is left in place')
+
+  fs.writeFileSync(path.join(current, 'trailhead.db'), 'new-data')
+  migrateLegacyDataDir(legacy, current)
+  assert.equal(fs.readFileSync(path.join(current, 'trailhead.db'), 'utf8'), 'new-data')
 })

@@ -3,6 +3,7 @@ import path from 'path'
 import { app } from 'electron'
 import Database from 'better-sqlite3'
 import { normalizeNsid } from '../normalize'
+import { DB_FILE_NAME } from '../dataDir'
 
 let dbInstance: Database.Database | null = null
 
@@ -130,7 +131,7 @@ function renormalizeNsids(db: Database.Database): void {
 }
 
 function resolveDbPath(): string {
-  return process.env.TRAILHEAD_DB_PATH ?? path.join(app.getPath('userData'), 'sigma-attendance.db')
+  return process.env.TRAILHEAD_DB_PATH ?? path.join(app.getPath('userData'), DB_FILE_NAME)
 }
 
 export function getDb(): Database.Database {

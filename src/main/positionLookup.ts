@@ -1,9 +1,12 @@
 import { spawn } from 'child_process'
+import fs from 'fs'
+import path from 'path'
 import type { PositionCandidate, PositionSearchResult } from '../shared/types'
 
 /**
  * Looks a student up on LinkedIn through a DuckDuckGo search, using the
- * `ddgs` Python package (`pip install ddgs`). This is the app's only network
+ * `ddgs` Python package. The Windows installer ships its own Python with
+ * ddgs (scripts/bundle-python.cjs); otherwise the system Python is used. This is the app's only network
  * feature: it runs once per click on a student, never in bulk, and searches
  * are spaced out so repeated clicks can't hammer the search engine.
  */
@@ -31,10 +34,19 @@ except Exception as e:
 print(json.dumps([{"title": r.get("title", ""), "body": r.get("body", ""), "href": r.get("href", "")} for r in results or []]))
 `
 
-const PYTHON_COMMANDS: [string, string[]][] =
+const SYSTEM_PYTHONS: [string, string[]][] =
   process.platform === 'win32'
     ? [['python', []], ['py', ['-3']], ['python3', []]]
     : [['python3', []], ['python', []]]
+
+/** The bundled runtime (installed app, or a prepared python-runtime/ in dev) first, then the system's. */
+function pythonCommands(): [string, string[]][] {
+  const bundled = [
+    process.resourcesPath && path.join(process.resourcesPath, 'python', 'python.exe'),
+    path.join(process.cwd(), 'python-runtime', 'win', 'python.exe')
+  ].filter((p): p is string => !!p && process.platform === 'win32' && fs.existsSync(p))
+  return [...bundled.map((p): [string, string[]] => [p, []]), ...SYSTEM_PYTHONS]
+}
 
 interface RawResult {
   title: string
@@ -103,7 +115,7 @@ function searchPositions(query: string): Promise<PositionSearchResult> {
 }
 
 async function runDdgs(query: string): Promise<RawResult[]> {
-  for (const [command, prefixArgs] of PYTHON_COMMANDS) {
+  for (const [command, prefixArgs] of pythonCommands()) {
     let output: string
     try {
       output = await runPython(command, [...prefixArgs, '-c', PY_SCRIPT, query, String(MAX_RESULTS)])

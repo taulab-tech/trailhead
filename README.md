@@ -30,7 +30,8 @@ when you click it.
   `"First Last" site:linkedin.com/in` and lists the matching profiles (headline, experience,
   education, location). Pick the right person with *This is them* to save their position and
   profile link — nothing is saved automatically, since names are often shared. Searches run one
-  at a time, a few seconds apart, and only on click. Needs Python 3 with `pip install ddgs`.
+  at a time, a few seconds apart, and only on click. The Windows installer includes its own
+  Python with `ddgs`; when running from source it uses your Python (`pip install ddgs`).
 - **Programs & Events**: every imported roster, with attendee lists and the ability to rename,
   re-date, or delete an accidentally-imported sheet.
 - **The Trail**: drag-and-drop the groups (Hackathon, Class, Program, …) into the order students
@@ -41,7 +42,7 @@ when you click it.
 ## Running it
 
 Requires [Node.js](https://nodejs.org) 20+. The optional position lookup also needs Python 3 with
-`pip install ddgs`.
+`pip install ddgs` when running from source.
 
 ```bash
 npm install
@@ -49,7 +50,7 @@ npm run dev
 ```
 
 This opens the app in a window. Your data is stored in a local SQLite file in your OS user-data
-folder (on Windows: `%APPDATA%\sigma-attendance\sigma-attendance.db`) — it persists
+folder (on Windows: `%APPDATA%\Trailhead\trailhead.db`) — it persists
 between runs automatically.
 
 ## Tests
@@ -69,6 +70,9 @@ npm run dist:win    # Windows installer (.exe)
 npm run dist:mac    # macOS (.dmg)
 npm run dist:linux  # Linux (AppImage)
 ```
+
+`dist:win` also prepares a private Python with `ddgs` for the installer (`scripts/bundle-python.cjs`),
+which needs Python with pip on the build machine the first time.
 
 Output lands in `dist/`. Run the matching `dist:*` script on the OS you want to build for.
 

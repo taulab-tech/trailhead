@@ -10,6 +10,10 @@ asarUnpack:
   - '**/*.node'
 win:
   target: nsis
+  # Private Python + ddgs for the position lookup (see scripts/bundle-python.cjs).
+  extraResources:
+    - from: python-runtime/win
+      to: python
 mac:
   target: dmg
   category: public.app-category.education
