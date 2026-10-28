@@ -93,7 +93,7 @@ export function getFunnelStats(year: number | null = null): FunnelStats {
   const db = getDb()
   const categories = db
     .prepare(
-      'SELECT id, name, stage_order FROM event_categories WHERE stage_order IS NOT NULL ORDER BY stage_order ASC'
+      'SELECT id, name, stage_order FROM event_categories WHERE stage_order IS NOT NULL ORDER BY stage_order ASC, name ASC'
     )
     .all() as { id: string; name: string; stage_order: number }[]
 

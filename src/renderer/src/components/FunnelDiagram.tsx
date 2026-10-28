@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react'
 import type { AttendanceDate, EventRecord, FunnelStats, Student } from '../../../shared/types'
-import { stageLabel } from '../lib/stageLabel'
+import { stageLabel, trailStopLabel } from '../lib/stageLabel'
 import { colorForIndex } from '../lib/palette'
 import { seriesKeyFor } from '../lib/eventSeries'
 import type { FunnelSelection } from './FunnelDrillDrawer'
@@ -478,8 +478,8 @@ export default function FunnelDiagram({
   if (!layout) {
     return (
       <div className="empty-state">
-        No events have been assigned to a funnel group yet. Set a &quot;Group&quot; (Entry / Middle / End)
-        on your events to see the pathway map here.
+        No groups are on the trail yet. Place groups on The Trail page to see the pathway map
+        here.
       </div>
     )
   }
@@ -500,7 +500,7 @@ export default function FunnelDiagram({
             fontSize="12"
             fontWeight={600}
           >
-            {stageLabel(stage).toUpperCase()}
+            {trailStopLabel(i, layout.stages.length).toUpperCase()}
           </text>
         ))}
 

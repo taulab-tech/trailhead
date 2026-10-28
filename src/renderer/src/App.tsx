@@ -5,7 +5,7 @@ import StudentsPage from './pages/StudentsPage'
 import EventsPage from './pages/EventsPage'
 import DuplicatesPage from './pages/DuplicatesPage'
 import DashboardPage from './pages/DashboardPage'
-import GroupsPage from './pages/GroupsPage'
+import TrailPage from './pages/TrailPage'
 
 type Page = 'import' | 'students' | 'events' | 'duplicates' | 'dashboard' | 'groups'
 
@@ -105,7 +105,11 @@ function Shell(): React.JSX.Element {
       icon: <Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
     },
     { key: 'events', label: 'Programs & Events', icon: <Icon d="M3 5h18v16H3zM16 3v4M8 3v4M3 10h18" /> },
-    { key: 'groups', label: 'Funnel Groups', icon: <Icon d="M3 4h18l-7 8v6l-4 2v-8z" /> },
+    {
+      key: 'groups',
+      label: 'The Trail',
+      icon: <Icon d="M6 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 17V11a4 4 0 0 1 4-4h6M18 7v6a4 4 0 0 1-4 4H8" />
+    },
     { key: 'duplicates', label: 'Duplicates', icon: <Icon d="M9 9h11v11H9zM5 15H4V4h11v1" /> }
   ]
 
@@ -161,7 +165,7 @@ function Shell(): React.JSX.Element {
         {page === 'import' && <ImportPage onImported={bump} />}
         {page === 'students' && <StudentsPage />}
         {page === 'events' && <EventsPage />}
-        {page === 'groups' && <GroupsPage />}
+        {page === 'groups' && <TrailPage />}
         {page === 'duplicates' && <DuplicatesPage onChanged={bump} />}
       </div>
     </div>

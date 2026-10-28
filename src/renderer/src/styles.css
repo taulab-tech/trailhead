@@ -720,3 +720,332 @@ a {
   background: var(--accent);
   border-radius: 3px;
 }
+
+/* ---------- The Trail ---------- */
+
+.trail-page.is-busy {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.trail-card-surface {
+  padding: 28px 20px 20px;
+}
+
+.trail {
+  overflow-x: auto;
+}
+
+.trail-track {
+  position: relative;
+  display: flex;
+  width: 100%;
+  /* Grows past the card (and scrolls) only once stops can't shrink further. */
+  min-width: min-content;
+}
+
+/* The dashed path runs through the stop markers. */
+.trail-line {
+  position: absolute;
+  top: 19px;
+  left: 60px;
+  right: 60px;
+  border-top: 2px dashed #c3cbc6;
+}
+
+.trail-stop {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: 0 8px;
+}
+
+.trail-marker {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text-strong);
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 5px var(--bg-elevated);
+  position: relative;
+}
+
+.trail-marker-new {
+  background: var(--bg-elevated);
+  color: var(--text-faint);
+  border: 1.5px dashed #b9c2bd;
+  font-weight: 500;
+  font-size: 18px;
+}
+
+.trail-stop-label {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 10px 0 14px;
+}
+
+.trail-dropzone {
+  flex: 1;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px;
+  border: 1.5px dashed transparent;
+  border-radius: var(--radius);
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.trail.is-dragging-group .trail-dropzone {
+  border-color: #d3d9d5;
+}
+
+.trail-dropzone.is-target,
+.trail.is-dragging-group .trail-dropzone.is-target {
+  border-color: var(--accent-dim);
+  background: var(--accent-soft);
+}
+
+.trail-stop.is-new {
+  flex: 0 0 150px;
+  min-width: 150px;
+}
+
+.trail-dropzone-new {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-color: var(--border);
+  color: var(--text-faint);
+  font-size: 12.5px;
+  padding: 16px;
+}
+
+/* Between-stop gaps only open up while a group is being dragged. */
+.trail-gap {
+  flex: 0 0 0;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  border-radius: var(--radius);
+  transition: flex-basis 0.15s ease;
+}
+
+.trail-gap .trail-marker {
+  width: 28px;
+  height: 28px;
+  margin-top: 6px;
+  font-size: 15px;
+}
+
+.trail.is-dragging-group .trail-gap {
+  flex-basis: 56px;
+}
+
+.trail-gap.is-target {
+  background: var(--accent-soft);
+}
+
+.trail-gap.is-target .trail-marker {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.trail-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  cursor: grab;
+  transition: border-color 0.12s, box-shadow 0.12s, opacity 0.12s;
+}
+
+.trail-card:hover {
+  border-color: #c8cfca;
+}
+
+.trail-card:active {
+  cursor: grabbing;
+}
+
+.trail-card.is-dragging {
+  opacity: 0.4;
+}
+
+.trail-card.is-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.trail-card-new {
+  cursor: default;
+}
+
+.trail-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trail-grip {
+  color: #b3bcb7;
+  display: flex;
+}
+
+.trail-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.trail-card-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: text;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin-left: -4px;
+}
+
+.trail-card-name:hover {
+  background: var(--bg-elevated-2);
+}
+
+input.trail-card-input {
+  flex: 1;
+  padding: 3px 6px;
+  font-weight: 600;
+}
+
+.trail-icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.trail-card:hover .trail-icon-btn,
+.trail-icon-btn:focus-visible {
+  opacity: 1;
+}
+
+.trail-icon-btn:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.trail-card-meta {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: 2px 0 0 36px;
+}
+
+.trail-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.trail-event {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  cursor: grab;
+  user-select: none;
+}
+
+.trail-event:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent-dim);
+}
+
+.trail-event-count {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.trail-more {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 3px 4px;
+  cursor: pointer;
+}
+
+.trail-off {
+  margin-top: 16px;
+}
+
+.trail-off-head {
+  margin-bottom: 14px;
+}
+
+.trail-off-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+  padding: 8px;
+  margin: -8px;
+  border: 1.5px dashed transparent;
+  border-radius: var(--radius);
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.trail-unassigned {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 44px;
+  align-items: center;
+  padding: 8px;
+  margin: -8px;
+  border: 1.5px dashed transparent;
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.trail-off-grid.is-armed,
+.trail-unassigned.is-armed {
+  border-color: #d3d9d5;
+}
+
+.trail-off-grid.is-target,
+.trail-unassigned.is-target {
+  border-color: var(--accent-dim);
+  background: var(--accent-soft);
+}
+
+.trail-empty {
+  color: var(--text-faint);
+  font-size: 13px;
+  padding: 10px 4px;
+}

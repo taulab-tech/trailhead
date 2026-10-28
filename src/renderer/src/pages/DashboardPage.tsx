@@ -10,7 +10,7 @@ import type {
 import FunnelDiagram from '../components/FunnelDiagram'
 import FunnelDrillDrawer, { type FunnelSelection } from '../components/FunnelDrillDrawer'
 import EventDetailDrawer from '../components/EventDetailDrawer'
-import { stageLabel } from '../lib/stageLabel'
+import { trailStopLabel } from '../lib/stageLabel'
 
 /** "12%", or "<1%" for a non-zero share that would otherwise round to 0%. */
 function formatShare(part: number, total: number): string {
@@ -112,7 +112,7 @@ function FunnelSection({ stats, onNavigate }: { stats: DashboardStats; onNavigat
           </span>{' '}
           <span className="text-dim">
             of {entryTotal} entry-stage students ({formatShare(funnel.fullFunnelCount, entryTotal)})
-            made it all the way through to {stageLabel(funnel.stages[funnel.stages.length - 1])}
+            made it all the way through to {trailStopLabel(funnel.stages.length - 1, funnel.stages.length)}
           </span>
         </div>
       )}
@@ -129,7 +129,7 @@ function FunnelSection({ stats, onNavigate }: { stats: DashboardStats; onNavigat
           <tbody>
             {funnel.nodes.map((n) => (
               <tr key={n.categoryId}>
-                <td className="text-dim">{stageLabel(n.stage)}</td>
+                <td className="text-dim">{trailStopLabel(funnel.stages.indexOf(n.stage), funnel.stages.length)}</td>
                 <td>{n.categoryName}</td>
                 <td>{n.studentCount}</td>
               </tr>
