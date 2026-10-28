@@ -95,6 +95,11 @@ function migrateSchema(db: Database.Database): void {
   if (!studentColumns.some((c) => c.name === 'enrol_term')) {
     db.exec('ALTER TABLE students ADD COLUMN enrol_term TEXT')
   }
+  for (const column of ['position', 'position_url', 'position_found_at']) {
+    if (!studentColumns.some((c) => c.name === column)) {
+      db.exec(`ALTER TABLE students ADD COLUMN ${column} TEXT`)
+    }
+  }
 
   renormalizeNsids(db)
 }

@@ -14,6 +14,9 @@ interface StudentRow {
   program: string | null
   year_in_program: string | null
   enrol_term: string | null
+  position: string | null
+  position_url: string | null
+  position_found_at: string | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -31,6 +34,9 @@ function rowToStudent(row: StudentRow, emails: string[], phones: string[], atten
     program: row.program,
     yearInProgram: row.year_in_program,
     enrolTerm: row.enrol_term === 'fall' || row.enrol_term === 'winter' ? row.enrol_term : null,
+    position: row.position ?? null,
+    positionUrl: row.position_url ?? null,
+    positionFoundAt: row.position_found_at ?? null,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -222,6 +228,9 @@ export function updateStudent(
     program: string | null
     yearInProgram: string | null
     enrolTerm: 'fall' | 'winter' | null
+    position: string | null
+    positionUrl: string | null
+    positionFoundAt: string | null
     notes: string | null
   }>
 ): void {
@@ -239,6 +248,9 @@ export function updateStudent(
     yearInProgram:
       fields.yearInProgram !== undefined ? fields.yearInProgram : current.year_in_program,
     enrolTerm: fields.enrolTerm !== undefined ? fields.enrolTerm : current.enrol_term,
+    position: fields.position !== undefined ? fields.position : current.position,
+    positionUrl: fields.positionUrl !== undefined ? fields.positionUrl : current.position_url,
+    positionFoundAt: fields.positionFoundAt !== undefined ? fields.positionFoundAt : current.position_found_at,
     notes: fields.notes !== undefined ? fields.notes : current.notes,
     updatedAt: new Date().toISOString(),
     id
@@ -246,7 +258,8 @@ export function updateStudent(
   db.prepare(
     `UPDATE students SET first_name=@firstName, last_name=@lastName, nsid=@nsid, college=@college,
        discipline=@discipline, degree=@degree, program=@program, year_in_program=@yearInProgram,
-       enrol_term=@enrolTerm, notes=@notes, updated_at=@updatedAt WHERE id=@id`
+       enrol_term=@enrolTerm, position=@position, position_url=@positionUrl,
+       position_found_at=@positionFoundAt, notes=@notes, updated_at=@updatedAt WHERE id=@id`
   ).run(merged)
 }
 
@@ -326,6 +339,9 @@ export function mergeStudents(keepId: string, mergeId: string): void {
       program: keep.program ?? merge.program ?? undefined,
       yearInProgram: keep.yearInProgram ?? merge.yearInProgram ?? undefined,
       enrolTerm: keep.enrolTerm ?? merge.enrolTerm ?? undefined,
+      ...(keep.position || !merge.position
+        ? {}
+        : { position: merge.position, positionUrl: merge.positionUrl, positionFoundAt: merge.positionFoundAt }),
       notes: [keep.notes, merge.notes].filter(Boolean).join(' | ') || undefined
     })
 

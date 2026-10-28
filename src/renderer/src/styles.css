@@ -1371,3 +1371,115 @@ input.review-cell:focus {
   font-size: 12.5px;
   color: var(--text-faint);
 }
+
+/* ---------- Position lookup ---------- */
+
+.position-saved {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: var(--bg-elevated);
+}
+
+.position-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.position-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.position-meta a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.position-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.position-error {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.position-candidates {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.position-candidates-hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.position-candidate {
+  display: flex;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--bg-elevated);
+}
+
+.position-candidate:hover {
+  border-color: #c8cfca;
+}
+
+.position-candidate-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.position-candidate-name {
+  font-weight: 600;
+}
+
+.position-candidate-headline {
+  font-size: 13px;
+  margin-top: 1px;
+}
+
+.position-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 8px 0 0;
+  font-size: 12.5px;
+}
+
+.position-facts dt {
+  color: var(--text-faint);
+}
+
+.position-facts dd {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.position-candidate-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.position-open {
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}

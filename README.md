@@ -7,7 +7,9 @@ Drag in event/attendance spreadsheets, and it builds a master student list — a
 linking repeat students across events, with a manual review screen for anything the automatic
 matching couldn't confidently resolve.
 
-No AI, no network calls. Everything (including the database) lives on your computer.
+No AI. Everything (including the database) lives on your computer. The one exception is the
+optional **Position** lookup on a student, which searches the web for that student's name — only
+when you click it.
 
 ## What it does
 
@@ -24,6 +26,11 @@ No AI, no network calls. Everything (including the database) lives on your compu
 - **Students**: searchable master list with every student's contact info, program/college info,
   and full event history. Edit any field, manually add/remove an event, or manually merge two
   records the matching missed.
+- **Position lookup**: in a student's panel, *Look up on LinkedIn* searches DuckDuckGo for
+  `"First Last" site:linkedin.com/in` and lists the matching profiles (headline, experience,
+  education, location). Pick the right person with *This is them* to save their position and
+  profile link — nothing is saved automatically, since names are often shared. Searches run one
+  at a time, a few seconds apart, and only on click. Needs Python 3 with `pip install ddgs`.
 - **Programs & Events**: every imported roster, with attendee lists and the ability to rename,
   re-date, or delete an accidentally-imported sheet.
 - **The Trail**: drag-and-drop the groups (Hackathon, Class, Program, …) into the order students
@@ -33,7 +40,8 @@ No AI, no network calls. Everything (including the database) lives on your compu
 
 ## Running it
 
-Requires [Node.js](https://nodejs.org) 20+.
+Requires [Node.js](https://nodejs.org) 20+. The optional position lookup also needs Python 3 with
+`pip install ddgs`.
 
 ```bash
 npm install

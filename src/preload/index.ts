@@ -14,7 +14,8 @@ import type {
   ParsedWorkbook,
   PossibleDuplicate,
   Student,
-  StudentDetail
+  StudentDetail,
+  PositionCandidate
 } from '../shared/types'
 
 const api = {
@@ -44,6 +45,8 @@ const api = {
     ipcRenderer.invoke('students:removeAttendance', attendanceId),
   mergeStudents: (keepId: string, mergeId: string): Promise<void> =>
     ipcRenderer.invoke('students:merge', keepId, mergeId),
+  findPosition: (studentId: string, extraTerms?: string): Promise<PositionCandidate[]> =>
+    ipcRenderer.invoke('students:findPosition', studentId, extraTerms),
 
   listEvents: (): Promise<EventRecord[]> => ipcRenderer.invoke('events:list'),
   getEventDetail: (id: string): Promise<EventDetail | null> => ipcRenderer.invoke('events:detail', id),

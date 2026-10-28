@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import type { EventRecord, Student, StudentDetail } from '../../../shared/types'
+import PositionLookup from './PositionLookup'
 
 export default function StudentDetailDrawer({
   studentId,
@@ -199,6 +200,15 @@ export default function StudentDetailDrawer({
             {saving ? 'Saving…' : 'Save changes'}
           </button>
         </div>
+
+        <div className="section-title">Position</div>
+        <PositionLookup
+          student={detail}
+          onSaved={() => {
+            load()
+            onChanged()
+          }}
+        />
 
         <div className="section-title">
           Programs &amp; events attended ({detail.attendances.length})

@@ -15,6 +15,8 @@ import { listPossibleDuplicates, suggestDuplicate } from '../src/main/db/duplica
 import { listEvents } from '../src/main/db/events'
 import { createCategory, deleteCategory, listCategories } from '../src/main/db/categories'
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
+import { buildPositionQuery, parseLinkedInResult } from '../src/main/positionLookup'
+import { updateStudent } from '../src/main/db/students'
 import { commitImport, harmonizeClasslistEventNames, parseWorkbookForPreview, previewImport } from '../src/main/importer'
 
 beforeEach(() => wipeDatabase())
@@ -325,4 +327,63 @@ test('the same offering imported under both names merges into one event without 
   assert.deepEqual(eventNames(), ['GE 495 2023'])
   const count = getDb().prepare('SELECT COUNT(*) as c FROM attendances').get() as { c: number }
   assert.equal(count.c, 3)
+})
+
+test('LinkedIn search results are read into name, headline, experience, education and location', () => {
+  const [engineer, researcher, noHeadline] = [
+    {
+      title: 'Nadia Oyelaran - Electrical Engineer at NORTHWIND | LinkedIn',
+      body: "Electrical Engineer at NORTHWIND · Experience: NORTHWIND · Education: University of Saskatchewan · Location: Saskatoon · 281 connections on LinkedIn. View Nadia Oyelaran's profile on LinkedIn, a professional community of 1 billion members.",
+      href: 'https://ca.linkedin.com/in/nadia-oyelaran-1'
+    },
+    {
+      title: 'Nadia Oyelaran - Coadjunct Researcher | LinkedIn',
+      body: "Coadjunct Researcher · Hi, I'm a coadjunct physics researcher at Rutgers University New Brunswick currently working on quantum computing using superconducting qubits. · Experience: Rutgers ...",
+      href: 'https://www.linkedin.com/in/nadia-oyelaran-2'
+    },
+    {
+      title: 'Nadia Oyelaran - Catonsville, Maryland, United States | Professional ...',
+      body: "Education: The Community College of Baltimore County · Location: Catonsville. View Nadia Oyelaran's profile on LinkedIn, a professional community of 1 billion members.",
+      href: 'https://www.linkedin.com/in/nadia-oyelaran-3'
+    }
+  ].map(parseLinkedInResult)
+
+  assert.deepEqual(
+    { ...engineer, snippet: undefined },
+    {
+      name: 'Nadia Oyelaran',
+      headline: 'Electrical Engineer at NORTHWIND',
+      experience: 'NORTHWIND',
+      education: 'University of Saskatchewan',
+      location: 'Saskatoon',
+      url: 'https://ca.linkedin.com/in/nadia-oyelaran-1',
+      snippet: undefined
+    }
+  )
+  assert.equal(researcher.headline, 'Coadjunct Researcher')
+  assert.equal(researcher.experience, 'Rutgers')
+  // A title that only carries a location isn't a job headline.
+  assert.equal(noHeadline.headline, null)
+  assert.equal(noHeadline.education, 'The Community College of Baltimore County')
+})
+
+test('the LinkedIn query quotes the name and keeps extra words outside the quotes', () => {
+  assert.equal(buildPositionQuery('Nadia', 'Oyelaran'), '"Nadia Oyelaran" site:linkedin.com/in')
+  assert.equal(buildPositionQuery('Ann "AJ"', 'Lee', 'Saskatoon'), '"Ann AJ Lee" site:linkedin.com/in Saskatoon')
+})
+
+test('a saved position is kept when two students are merged', () => {
+  const keep = createStudent({ firstName: 'Chris', lastName: 'Elash' })
+  const merge = createStudent({ firstName: 'Christopher', lastName: 'Elash' })
+  updateStudent(merge, {
+    position: 'Engineer · NORTHWIND',
+    positionUrl: 'https://www.linkedin.com/in/x',
+    positionFoundAt: '2026-10-28T00:00:00.000Z'
+  })
+
+  mergeStudents(keep, merge)
+
+  const kept = getStudentById(keep)
+  assert.equal(kept?.position, 'Engineer · NORTHWIND')
+  assert.equal(kept?.positionUrl, 'https://www.linkedin.com/in/x')
 })

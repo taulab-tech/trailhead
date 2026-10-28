@@ -9,6 +9,10 @@ export interface Student {
   program: string | null
   yearInProgram: string | null
   enrolTerm: 'fall' | 'winter' | null
+  /** Latest job/headline, confirmed by the user from a LinkedIn lookup (or typed in). */
+  position: string | null
+  positionUrl: string | null
+  positionFoundAt: string | null
   notes: string | null
   createdAt: string
   updatedAt: string
@@ -203,4 +207,15 @@ export interface DashboardStats {
   eventsOverTime: { name: string; date: string | null; count: number }[]
   funnel: FunnelStats
   funnelYears: number[]
+}
+
+/** One possible LinkedIn match for a student, parsed from a search result. */
+export interface PositionCandidate {
+  name: string
+  headline: string | null
+  experience: string | null
+  education: string | null
+  location: string | null
+  url: string
+  snippet: string
 }
