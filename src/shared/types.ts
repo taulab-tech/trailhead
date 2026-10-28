@@ -219,3 +219,13 @@ export interface PositionCandidate {
   url: string
   snippet: string
 }
+
+export interface PositionSearchResult {
+  /** The exact search that produced these results. */
+  query: string
+  /** Everything the search returned, before keeping only LinkedIn profiles. */
+  resultCount: number
+  candidates: PositionCandidate[]
+  /** Set when the narrowing words found nothing and the name alone was searched instead. */
+  broadenedFrom: string | null
+}

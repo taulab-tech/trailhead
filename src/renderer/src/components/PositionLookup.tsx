@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import type { PositionCandidate, Student } from '../../../shared/types'
+import type { PositionCandidate, PositionSearchResult, Student } from '../../../shared/types'
 
 /** What gets saved as the student's position: "Headline · Company", or whichever part exists. */
 function positionText(c: PositionCandidate): string {
@@ -27,15 +27,16 @@ export default function PositionLookup({
 }): React.JSX.Element {
   const [extra, setExtra] = useState('')
   const [searching, setSearching] = useState(false)
-  const [candidates, setCandidates] = useState<PositionCandidate[] | null>(null)
+  const [lookup, setLookup] = useState<PositionSearchResult | null>(null)
+  const candidates = lookup?.candidates ?? null
   const [error, setError] = useState<string | null>(null)
 
   const search = async (): Promise<void> => {
     setSearching(true)
     setError(null)
-    setCandidates(null)
+    setLookup(null)
     try {
-      setCandidates(await window.api.findPosition(student.id, extra.trim()))
+      setLookup(await window.api.findPosition(student.id, extra.trim()))
     } catch (err) {
       // IPC wraps thrown errors as "Error invoking remote method '…': Error: <message>".
       setError(err instanceof Error ? err.message.replace(/^.*Error: /, '') : String(err))
@@ -50,7 +51,7 @@ export default function PositionLookup({
       positionUrl: safeUrl(c.url),
       positionFoundAt: new Date().toISOString()
     })
-    setCandidates(null)
+    setLookup(null)
     onSaved()
   }
 
@@ -96,7 +97,8 @@ export default function PositionLookup({
       <div style={{ display: 'flex', gap: 8 }}>
         <input
           type="text"
-          placeholder="Narrow it down (optional), e.g. school or city"
+          placeholder="Extra words (optional), e.g. Saskatoon"
+          aria-label="Extra words to narrow the search"
           value={extra}
           onChange={(e) => setExtra(e.target.value)}
           onKeyDown={(e) => {
@@ -108,14 +110,29 @@ export default function PositionLookup({
         </button>
       </div>
       <p className="position-note">
-        Searches the web for “{student.firstName} {student.lastName}” on LinkedIn — only when you click.
+        Searches the web for “{student.firstName} {student.lastName}” on LinkedIn — only when you click. The
+        name is added for you.
       </p>
 
       {error && <p className="position-error">{error}</p>}
 
+      {lookup && (
+        <p className="position-searched">
+          {lookup.broadenedFrom && (
+            <>
+              Nothing matched <span className="mono">{lookup.broadenedFrom}</span>, so this searched the name
+              alone.{' '}
+            </>
+          )}
+          Searched <span className="mono">{lookup.query}</span> · {lookup.resultCount} result
+          {lookup.resultCount === 1 ? '' : 's'}
+          {lookup.resultCount > 0 && lookup.candidates.length === 0 && ', none of them LinkedIn profiles'}
+        </p>
+      )}
+
       {candidates && candidates.length === 0 && (
-        <p className="text-dim" style={{ fontSize: 13 }}>
-          No LinkedIn profiles found. Try adding a school or city above.
+        <p className="text-dim" style={{ fontSize: 13, margin: '6px 0 0' }}>
+          No LinkedIn profiles found. The search engine may also be limiting searches — try again in a minute.
         </p>
       )}
 

@@ -27,7 +27,7 @@ import {
 } from './db/duplicates'
 import { createCategory, deleteCategory, listCategories, updateCategory } from './db/categories'
 import { getAttendanceDates, getDashboardStats, getEventStudentSets, getFunnelStats } from './db/dashboard'
-import { buildPositionQuery, searchPositions } from './positionLookup'
+import { lookUpPosition } from './positionLookup'
 import type { ImportSheetRequest, NewStudentInput } from '../shared/types'
 
 export function registerIpcHandlers(): void {
@@ -64,7 +64,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('students:findPosition', (_e, studentId: string, extraTerms?: string) => {
     const student = getStudentById(studentId)
     if (!student) throw new Error('Student not found')
-    return searchPositions(buildPositionQuery(student.firstName, student.lastName, extraTerms))
+    return lookUpPosition(student.firstName, student.lastName, extraTerms)
   })
 
   ipcMain.handle('events:list', () => listEvents())

@@ -1,5 +1,5 @@
 import { spawn } from 'child_process'
-import type { PositionCandidate } from '../shared/types'
+import type { PositionCandidate, PositionSearchResult } from '../shared/types'
 
 /**
  * Looks a student up on LinkedIn through a DuckDuckGo search, using the
@@ -45,21 +45,55 @@ interface RawResult {
 let lastSearchAt = 0
 let queue: Promise<unknown> = Promise.resolve()
 
+/**
+ * `"First Last" site:linkedin.com/in` plus any narrowing words. Words that
+ * just repeat the name are dropped — the name is already searched exactly.
+ */
 export function buildPositionQuery(firstName: string, lastName: string, extraTerms = ''): string {
   const name = `${firstName} ${lastName}`.replace(/"/g, '').replace(/\s+/g, ' ').trim()
-  return `"${name}" site:linkedin.com/in ${extraTerms.replace(/"/g, '')}`.trim()
+  const nameWords = new Set(name.toLowerCase().split(' '))
+  const extra = extraTerms
+    .replace(/"/g, '')
+    .split(/\s+/)
+    .filter((w) => w && !nameWords.has(w.toLowerCase()))
+    .join(' ')
+  return `"${name}" site:linkedin.com/in ${extra}`.trim()
+}
+
+/** A LinkedIn profile result — by its link, or by a "… | LinkedIn" title when the link is a redirect. */
+export function isLinkedInProfile(r: RawResult): boolean {
+  return /linkedin\.com\/(in|pub)\//i.test(r.href) || /\|\s*LinkedIn\b/i.test(r.title)
+}
+
+/**
+ * Looks the student up; if narrowing words leave nothing, tries once more
+ * with the name alone and says so.
+ */
+export async function lookUpPosition(
+  firstName: string,
+  lastName: string,
+  extraTerms = ''
+): Promise<PositionSearchResult> {
+  const query = buildPositionQuery(firstName, lastName, extraTerms)
+  const result = await searchPositions(query)
+  const plainQuery = buildPositionQuery(firstName, lastName)
+  if (result.candidates.length > 0 || query === plainQuery) return result
+  return { ...(await searchPositions(plainQuery)), broadenedFrom: query }
 }
 
 /** Searches one at a time, at least MIN_SECONDS_BETWEEN_SEARCHES apart. */
-export function searchPositions(query: string): Promise<PositionCandidate[]> {
+function searchPositions(query: string): Promise<PositionSearchResult> {
   const run = queue.then(async () => {
     const wait = lastSearchAt + MIN_SECONDS_BETWEEN_SEARCHES * 1000 - Date.now()
     if (wait > 0) await new Promise((r) => setTimeout(r, wait))
     try {
       const raw = await runDdgs(query)
-      return raw
-        .filter((r) => /linkedin\.com\/in\//i.test(r.href))
-        .map(parseLinkedInResult)
+      return {
+        query,
+        resultCount: raw.length,
+        candidates: raw.filter(isLinkedInProfile).map(parseLinkedInResult),
+        broadenedFrom: null
+      }
     } finally {
       lastSearchAt = Date.now()
     }

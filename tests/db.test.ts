@@ -15,7 +15,7 @@ import { listPossibleDuplicates, suggestDuplicate } from '../src/main/db/duplica
 import { listEvents } from '../src/main/db/events'
 import { createCategory, deleteCategory, listCategories } from '../src/main/db/categories'
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
-import { buildPositionQuery, parseLinkedInResult } from '../src/main/positionLookup'
+import { buildPositionQuery, isLinkedInProfile, parseLinkedInResult } from '../src/main/positionLookup'
 import { updateStudent } from '../src/main/db/students'
 import { commitImport, harmonizeClasslistEventNames, parseWorkbookForPreview, previewImport } from '../src/main/importer'
 
@@ -370,6 +370,17 @@ test('LinkedIn search results are read into name, headline, experience, educatio
 test('the LinkedIn query quotes the name and keeps extra words outside the quotes', () => {
   assert.equal(buildPositionQuery('Nadia', 'Oyelaran'), '"Nadia Oyelaran" site:linkedin.com/in')
   assert.equal(buildPositionQuery('Ann "AJ"', 'Lee', 'Saskatoon'), '"Ann AJ Lee" site:linkedin.com/in Saskatoon')
+  // Typing the name into the narrowing box doesn't repeat it in the search.
+  assert.equal(buildPositionQuery('Nadia', 'Oyelaran', 'nadia oyelaran'), '"Nadia Oyelaran" site:linkedin.com/in')
+  assert.equal(buildPositionQuery('Nadia', 'Oyelaran', 'Nadia Saskatoon'), '"Nadia Oyelaran" site:linkedin.com/in Saskatoon')
+})
+
+test('LinkedIn profiles are recognised by link, or by title when the link is a redirect', () => {
+  const profile = (title: string, href: string) => isLinkedInProfile({ title, body: '', href })
+  assert.equal(profile('Nadia Oyelaran - Engineer | LinkedIn', 'https://ca.linkedin.com/in/x'), true)
+  assert.equal(profile('Nadia Oyelaran - Engineer | LinkedIn', 'https://www.bing.com/ck/a?u=abc'), true)
+  assert.equal(profile('Nadia Oyelaran posts', 'https://www.linkedin.com/posts/x'), false)
+  assert.equal(profile('Nadia Oyelaran - Facebook', 'https://facebook.com/x'), false)
 })
 
 test('a saved position is kept when two students are merged', () => {

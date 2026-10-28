@@ -1483,3 +1483,13 @@ input.review-cell:focus {
   text-decoration: none;
   white-space: nowrap;
 }
+
+.position-searched {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.position-searched .mono {
+  color: var(--text);
+}

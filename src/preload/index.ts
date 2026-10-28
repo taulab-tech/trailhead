@@ -15,7 +15,7 @@ import type {
   PossibleDuplicate,
   Student,
   StudentDetail,
-  PositionCandidate
+  PositionSearchResult
 } from '../shared/types'
 
 const api = {
@@ -45,7 +45,7 @@ const api = {
     ipcRenderer.invoke('students:removeAttendance', attendanceId),
   mergeStudents: (keepId: string, mergeId: string): Promise<void> =>
     ipcRenderer.invoke('students:merge', keepId, mergeId),
-  findPosition: (studentId: string, extraTerms?: string): Promise<PositionCandidate[]> =>
+  findPosition: (studentId: string, extraTerms?: string): Promise<PositionSearchResult> =>
     ipcRenderer.invoke('students:findPosition', studentId, extraTerms),
 
   listEvents: (): Promise<EventRecord[]> => ipcRenderer.invoke('events:list'),
