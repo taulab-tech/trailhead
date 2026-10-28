@@ -123,7 +123,7 @@ export default function StudentDetailDrawer({
         </div>
         <div className="field-row-3">
           <div>
-            <label>Student ID (NSID)</label>
+            <label>Student ID</label>
             <input
               type="text"
               value={form.nsid ?? ''}
@@ -246,7 +246,7 @@ export default function StudentDetailDrawer({
         </p>
         <input
           type="text"
-          placeholder="Search by name, email or NSID…"
+          placeholder="Search by name, email or student ID…"
           value={mergeQuery}
           onChange={(e) => setMergeQuery(e.target.value)}
         />

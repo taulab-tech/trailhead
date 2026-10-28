@@ -6,10 +6,11 @@ import {
   findStudentIdByNsid,
   getAllStudentsMinimal,
   getStudentById,
+  normalizeNsid,
   updateStudent
 } from './db/students'
 import { suggestDuplicate } from './db/duplicates'
-import { normalizeName, normalizeNsid } from './normalize'
+import { normalizeName } from './normalize'
 import { nameSimilarity } from './similarity'
 
 export const FUZZY_DUPLICATE_THRESHOLD = 0.9
@@ -162,7 +163,7 @@ export function detectFuzzyDuplicates(touchedIds: string[]): number {
       if (score >= FUZZY_DUPLICATE_THRESHOLD) {
         const reason =
           score === 1
-            ? `Identical name "${touched.firstName} ${touched.lastName}" but no matching NSID/email — could be the same person or two different people.`
+            ? `Identical name "${touched.firstName} ${touched.lastName}" but no matching student ID or email — could be the same person or two different people.`
             : `Similar name: "${touched.firstName} ${touched.lastName}" vs "${other.firstName} ${other.lastName}"`
         suggestDuplicate(touched.id, other.id, score, reason)
         created++

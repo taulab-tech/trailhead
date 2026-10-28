@@ -1,6 +1,12 @@
 import { randomUUID } from 'crypto'
 import { getDb } from './index'
-import { normalizeEmail, normalizeNsid, normalizePhone } from '../normalize'
+import { normalizeEmail, normalizeNsid as normalizeNsidWith, normalizePhone } from '../normalize'
+import { getSchoolEmailDomain } from './settings'
+
+/** Normalizes a student ID using the configured school email domain. */
+export function normalizeNsid(nsid: string | null | undefined): string | null {
+  return normalizeNsidWith(nsid, getSchoolEmailDomain())
+}
 import type { Attendance, NewStudentInput, Student, StudentDetail } from '../../shared/types'
 
 interface StudentRow {

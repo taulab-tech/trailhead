@@ -33,7 +33,7 @@ export default function StudentsPage(): React.JSX.Element {
       <div className="toolbar">
         <input
           type="search"
-          placeholder="Search name, email, NSID, college, program…"
+          placeholder="Search name, email, student ID, college, program…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ maxWidth: 360 }}

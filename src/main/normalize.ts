@@ -5,19 +5,25 @@ export function normalizeEmail(email: string | null | undefined): string | null 
   return trimmed
 }
 
-/** Values people type into an ID column when there isn't one — never a real NSID. */
+/** Values people type into an ID column when there isn't one — never a real student ID. */
 const NSID_PLACEHOLDERS = new Set(['n/a', 'na', 'none', 'null', 'unknown', 'tbd', '-', '--', '?', '0'])
 
 /**
- * Rosters record the same NSID both bare ("abc123") and as the campus email
- * ("abc123@usask.ca"), so the domain is stripped to make the two match.
+ * Rosters often record the same student ID both bare ("abc123") and as the
+ * school email ("abc123@school.edu"). When the school's email domain is
+ * configured, it (and any subdomain) is stripped so the two forms match;
+ * other domains are left alone so "john@gmail.com" never becomes "john".
  */
-export function normalizeNsid(nsid: string | null | undefined): string | null {
+export function normalizeNsid(
+  nsid: string | null | undefined,
+  schoolEmailDomain: string | null = null
+): string | null {
   if (!nsid) return null
-  const trimmed = nsid
-    .trim()
-    .toLowerCase()
-    .replace(/@([a-z0-9-]+\.)*usask\.ca$/, '')
+  let trimmed = nsid.trim().toLowerCase()
+  if (schoolEmailDomain) {
+    const escaped = schoolEmailDomain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    trimmed = trimmed.replace(new RegExp(`@([a-z0-9-]+\\.)*${escaped}$`), '')
+  }
   if (!trimmed || NSID_PLACEHOLDERS.has(trimmed)) return null
   return trimmed
 }

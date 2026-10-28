@@ -71,6 +71,10 @@ const api = {
   getFunnelForYear: (year: number | null): Promise<FunnelStats> =>
     ipcRenderer.invoke('dashboard:funnelForYear', year),
 
+  getSettings: (): Promise<{ schoolEmailDomain: string | null }> => ipcRenderer.invoke('settings:get'),
+  setSchoolEmailDomain: (domain: string | null): Promise<string | null> =>
+    ipcRenderer.invoke('settings:setSchoolEmailDomain', domain),
+
   backupDatabase: (): Promise<string | null> => ipcRenderer.invoke('db:backup'),
   restoreDatabase: (): Promise<string | null> => ipcRenderer.invoke('db:restore'),
   wipeDatabase: (): Promise<string | null> => ipcRenderer.invoke('db:wipe')

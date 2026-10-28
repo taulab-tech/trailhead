@@ -27,7 +27,7 @@ function detectMapping(headers: string[], rows: Record<string, string>[] = []): 
     const h = header.toLowerCase().trim()
     let field: MappableField = 'ignore'
 
-    if (h === 'nsid' || h === 'id' || h === 'student id') field = 'nsid'
+    if (['nsid', 'id', 'student id', 'student number', 'student no', 'student #', 'student no.'].includes(h)) field = 'nsid'
     else if (h.includes('year')) field = 'yearInProgram'
     else if (h.includes('email')) field = 'email'
     else if (h.includes('phone') || h.includes('cell')) field = 'phone'
@@ -202,7 +202,7 @@ function guessCategory(eventName: string, sheetName: string, fileName: string): 
   if (/\b(incubator|accelerator)\b/.test(text)) return categoryId('Program')
   // Bare course-code sheets (e.g. "431", "450") are class rosters.
   if (/^\d{3,4}$/.test(sheetName.trim())) return categoryId('Class')
-  // Registrar "…classlist [GE] <code>.xls" exports are always GE course rosters,
+  // Registrar "…classlist [SUBJ] <code>.xls" exports are always course rosters,
   // even when the sheet tab itself is just a generic "Class List Summary" label.
   if (classlistCourseCode(fileName)) return categoryId('Class')
 
@@ -210,16 +210,18 @@ function guessCategory(eventName: string, sheetName: string, fileName: string): 
 }
 
 /**
- * Registrar class-list exports for GE courses are named
- * "<yearmonth>_<CRN>_classlist[ GE] <code>.xls" — the course code is always
- * the last number before the extension, whether or not "GE" literally
- * appears — while the sheet tab itself carries no course identity at all
- * (just "Class List Summary"). When this pattern matches, the filename is
- * the authoritative source for both category and event name.
+ * Registrar class-list exports are named like
+ * "<yearmonth>_<CRN>_classlist[ SUBJ] <code>.xls" — the course number is
+ * always the last number before the extension, optionally preceded by a
+ * subject code ("CMPT 370", "GE490") — while the sheet tab itself carries no
+ * course identity at all (just "Class List Summary"). When this pattern
+ * matches, the filename is the authoritative source for both category and
+ * event name. Returns e.g. "CMPT 370", or just "370" with no subject.
  */
 function classlistCourseCode(fileName: string): string | null {
-  const match = fileName.match(/classlist\D*(\d{3,4})\D*$/i)
-  return match ? match[1] : null
+  const match = fileName.match(/classlist[\s_-]*(?:([a-z]{2,5})[\s_-]*)?(\d{3,4})\D*$/i)
+  if (!match) return null
+  return match[1] ? `${match[1].toUpperCase()} ${match[2]}` : match[2]
 }
 
 /**
@@ -264,16 +266,16 @@ function guessDate(eventName: string, sheetName: string, fileName: string): stri
 function deriveEventName(sheetName: string, fileName: string): string {
   const courseCode = classlistCourseCode(fileName)
   if (courseCode) {
-    // Include the term year so "GE831" from three different terms doesn't
+    // Include the term year so "CMPT 370" from three different terms doesn't
     // collapse into one merged event — findOrCreateEvent matches by exact
     // name, so distinct offerings need distinct names.
     const stamp = parseYearMonthStamp(fileName)
-    return stamp ? `GE${courseCode} ${stamp.year}` : `GE${courseCode}`
+    return stamp ? `${courseCode} ${stamp.year}` : courseCode
   }
 
   const dated = parseFileNameDateAndName(fileName)
   if (dated) {
-    // Same reasoning as the GE-course case above: an annually-recurring
+    // Same reasoning as the course case above: an annually-recurring
     // event name ("Agtech Hackathon" in 2024, 2025, 2026, …) would otherwise
     // collapse every year into one merged event.
     return `${dated.name} ${dated.date.slice(0, 4)}`

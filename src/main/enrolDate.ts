@@ -28,7 +28,7 @@ export function enrolDateFor(year: number, term: EnrolTerm): string {
 
 /**
  * Registrar-style exports are often stamped with a bare YYYYMM instead of
- * spelling out a term (e.g. "202209_87599_classlist GE 490.xls" was pulled in
+ * spelling out a term (e.g. "202209_87599_classlist CMPT 370.xls" was pulled in
  * September 2022). September–December belongs to that year's Fall term;
  * January–April belongs to that year's Winter term. May–August (summer) has
  * no equivalent in this app's two-term model, so it's left unmatched.

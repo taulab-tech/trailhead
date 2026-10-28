@@ -10,7 +10,7 @@ function StudentCard({ s }: { s: PossibleDuplicate['studentA'] }): React.JSX.Ele
       <div className="text-dim" style={{ marginTop: 4 }}>
         {s.emails.join(', ') || 'no email'}
       </div>
-      {s.nsid && <div className="text-faint mono">NSID: {s.nsid}</div>}
+      {s.nsid && <div className="text-faint mono">ID: {s.nsid}</div>}
       <div className="text-faint" style={{ marginTop: 6 }}>
         {[s.college, s.discipline, s.degree].filter(Boolean).join(' · ') || 'no program info'}
       </div>
@@ -57,7 +57,7 @@ export default function DuplicatesPage({ onChanged }: { onChanged: () => void })
       <div className="page-header">
         <div>
           <h1>Possible duplicates</h1>
-          <p>Flagged when two records have a very similar name but no matching NSID or email — review and merge, or dismiss if they&rsquo;re really two different people.</p>
+          <p>Flagged when two records have a very similar name but no matching student ID or email — review and merge, or dismiss if they&rsquo;re really two different people.</p>
         </div>
       </div>
 

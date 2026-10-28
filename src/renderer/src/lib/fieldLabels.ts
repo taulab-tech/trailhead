@@ -6,7 +6,7 @@ export const FIELD_LABELS: Record<MappableField, string> = {
   fullName: 'Full name',
   email: 'Email',
   phone: 'Phone',
-  nsid: 'Student ID (NSID)',
+  nsid: 'Student ID',
   college: 'College',
   discipline: 'Discipline / Major',
   degree: 'Degree',
