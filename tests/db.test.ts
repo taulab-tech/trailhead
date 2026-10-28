@@ -367,6 +367,24 @@ test('LinkedIn search results are read into name, headline, experience, educatio
   assert.equal(noHeadline.education, 'The Community College of Baltimore County')
 })
 
+test('a headline missing from the result title is taken from the start of the snippet', () => {
+  const r = parseLinkedInResult({
+    title: 'Dylan Haussecker - University of Saskatchewan | LinkedIn',
+    body: 'Co-Founder and CTO @ KeenSite · Experience: University of Saskatchewan · Education: Wentworth Institute of Technology · Location: Saskatoon · 500+ connections on LinkedIn.',
+    href: 'https://ca.linkedin.com/in/example'
+  })
+  assert.equal(r.headline, 'Co-Founder and CTO @ KeenSite')
+  assert.equal(r.experience, 'University of Saskatchewan')
+
+  // No headline anywhere: the title's organisation isn't promoted to a job title.
+  const bare = parseLinkedInResult({
+    title: 'Dylan Haussecker - University of Saskatchewan | LinkedIn',
+    body: 'Experience: University of Saskatchewan · Education: Wentworth Institute of Technology · Location: Saskatoon',
+    href: 'https://ca.linkedin.com/in/example'
+  })
+  assert.equal(bare.headline, null)
+})
+
 test('the LinkedIn query quotes the name and keeps extra words outside the quotes', () => {
   assert.equal(buildPositionQuery('Nadia', 'Oyelaran'), '"Nadia Oyelaran" site:linkedin.com/in')
   assert.equal(buildPositionQuery('Ann "AJ"', 'Lee', 'Saskatoon'), '"Ann AJ Lee" site:linkedin.com/in Saskatoon')

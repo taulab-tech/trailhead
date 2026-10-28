@@ -1427,8 +1427,6 @@ input.review-cell:focus {
 }
 
 .position-candidate {
-  display: flex;
-  gap: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 14px;
@@ -1437,6 +1435,42 @@ input.review-cell:focus {
 
 .position-candidate:hover {
   border-color: #c8cfca;
+}
+
+.position-candidate.is-chosen {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.position-candidate-row {
+  display: flex;
+  gap: 12px;
+}
+
+.position-snippet {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-faint);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.position-draft {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.position-saved + .position-draft,
+.position-draft:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
 }
 
 .position-candidate-main {

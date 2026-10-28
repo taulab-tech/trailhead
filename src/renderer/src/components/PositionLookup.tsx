@@ -1,22 +1,21 @@
 import React, { useState } from 'react'
 import type { PositionCandidate, PositionSearchResult, Student } from '../../../shared/types'
 
-/** What gets saved as the student's position: "Headline · Company", or whichever part exists. */
-function positionText(c: PositionCandidate): string {
-  if (c.headline && c.experience && !c.headline.toLowerCase().includes(c.experience.toLowerCase())) {
-    return `${c.headline} · ${c.experience}`
-  }
-  return c.headline ?? c.experience ?? 'See LinkedIn profile'
-}
-
 function safeUrl(url: string | null): string | null {
   return url && /^https:\/\//i.test(url) ? url : null
+}
+
+/** A position being confirmed or edited before it's saved. */
+interface Draft {
+  text: string
+  url: string | null
 }
 
 /**
  * The student's saved position, plus an on-click LinkedIn lookup. Nothing is
  * searched until the button is pressed, and nothing is saved until the user
- * picks the right person — common names return several different people.
+ * picks the right person and confirms the title — search results only carry
+ * a snippet of the profile, which often lacks the job title.
  */
 export default function PositionLookup({
   student,
@@ -30,11 +29,13 @@ export default function PositionLookup({
   const [lookup, setLookup] = useState<PositionSearchResult | null>(null)
   const candidates = lookup?.candidates ?? null
   const [error, setError] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Draft | null>(null)
 
   const search = async (): Promise<void> => {
     setSearching(true)
     setError(null)
     setLookup(null)
+    setDraft(null)
     try {
       setLookup(await window.api.findPosition(student.id, extra.trim()))
     } catch (err) {
@@ -45,12 +46,14 @@ export default function PositionLookup({
     }
   }
 
-  const choose = async (c: PositionCandidate): Promise<void> => {
+  const saveDraft = async (): Promise<void> => {
+    if (!draft || !draft.text.trim()) return
     await window.api.updateStudent(student.id, {
-      position: positionText(c),
-      positionUrl: safeUrl(c.url),
+      position: draft.text.trim(),
+      positionUrl: draft.url,
       positionFoundAt: new Date().toISOString()
     })
+    setDraft(null)
     setLookup(null)
     onSaved()
   }
@@ -62,9 +65,44 @@ export default function PositionLookup({
 
   const savedUrl = safeUrl(student.positionUrl)
 
+  const draftEditor = draft && (
+    <div className="position-draft">
+      <label htmlFor="position-draft">Position</label>
+      <input
+        id="position-draft"
+        type="text"
+        autoFocus
+        placeholder="e.g. Software Developer at Acme"
+        value={draft.text}
+        onChange={(e) => setDraft({ ...draft, text: e.target.value })}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') saveDraft()
+          if (e.key === 'Escape') setDraft(null)
+        }}
+      />
+      {!draft.text.trim() && draft.url && (
+        <p className="position-note">
+          The search result didn’t include a job title —{' '}
+          <a href={draft.url} target="_blank" rel="noreferrer">
+            open the profile
+          </a>{' '}
+          and copy it here.
+        </p>
+      )}
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <button className="btn btn-primary btn-sm" disabled={!draft.text.trim()} onClick={saveDraft}>
+          Save position
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={() => setDraft(null)}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <div>
-      {student.position ? (
+      {student.position && !(draft && !lookup) ? (
         <div className="position-saved">
           <div className="position-title">{student.position}</div>
           <div className="position-meta">
@@ -83,18 +121,23 @@ export default function PositionLookup({
                 })}
               </span>
             )}
+            <button className="review-link" onClick={() => setDraft({ text: student.position ?? '', url: savedUrl })}>
+              Edit
+            </button>
             <button className="review-link" onClick={clear}>
               Clear
             </button>
           </div>
         </div>
-      ) : (
+      ) : !draft ? (
         <p className="text-faint" style={{ margin: '0 0 10px' }}>
           No position saved yet.
         </p>
-      )}
+      ) : null}
 
-      <div style={{ display: 'flex', gap: 8 }}>
+      {draft && !lookup && draftEditor}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: draft && !lookup ? 14 : 0 }}>
         <input
           type="text"
           placeholder="Extra words (optional), e.g. Saskatoon"
@@ -138,45 +181,62 @@ export default function PositionLookup({
 
       {candidates && candidates.length > 0 && (
         <div className="position-candidates">
-          <div className="position-candidates-hint">Pick the right person — names are often shared.</div>
-          {candidates.map((c) => (
-            <div key={c.url} className="position-candidate">
-              <div className="position-candidate-main">
-                <div className="position-candidate-name">{c.name}</div>
-                {c.headline && <div className="position-candidate-headline">{c.headline}</div>}
-                <dl className="position-facts">
-                  {c.experience && (
-                    <>
-                      <dt>Experience</dt>
-                      <dd>{c.experience}</dd>
-                    </>
-                  )}
-                  {c.education && (
-                    <>
-                      <dt>Education</dt>
-                      <dd>{c.education}</dd>
-                    </>
-                  )}
-                  {c.location && (
-                    <>
-                      <dt>Location</dt>
-                      <dd>{c.location}</dd>
-                    </>
-                  )}
-                </dl>
+          <div className="position-candidates-hint">
+            Pick the right person — names are often shared. Details come from the search result, which only
+            shows part of the profile.
+          </div>
+          {candidates.map((c: PositionCandidate) => {
+            const url = safeUrl(c.url)
+            const chosen = draft !== null && draft.url === url
+            return (
+              <div key={c.url} className={`position-candidate ${chosen ? 'is-chosen' : ''}`}>
+                <div className="position-candidate-row">
+                  <div className="position-candidate-main">
+                    <div className="position-candidate-name">{c.name}</div>
+                    {c.headline ? (
+                      <div className="position-candidate-headline">{c.headline}</div>
+                    ) : (
+                      <div className="position-candidate-headline text-faint">No title in the search result</div>
+                    )}
+                    <dl className="position-facts">
+                      {c.experience && (
+                        <>
+                          <dt>Latest experience</dt>
+                          <dd>{c.experience}</dd>
+                        </>
+                      )}
+                      {c.education && (
+                        <>
+                          <dt>Education</dt>
+                          <dd>{c.education}</dd>
+                        </>
+                      )}
+                      {c.location && (
+                        <>
+                          <dt>Location</dt>
+                          <dd>{c.location}</dd>
+                        </>
+                      )}
+                    </dl>
+                  </div>
+                  <div className="position-candidate-actions">
+                    {!chosen && (
+                      <button className="btn btn-primary btn-sm" onClick={() => setDraft({ text: c.headline ?? '', url })}>
+                        This is them
+                      </button>
+                    )}
+                    {url && (
+                      <a href={url} target="_blank" rel="noreferrer" className="position-open">
+                        Open profile ↗
+                      </a>
+                    )}
+                  </div>
+                </div>
+                {c.snippet && <p className="position-snippet">{c.snippet}</p>}
+                {chosen && draftEditor}
               </div>
-              <div className="position-candidate-actions">
-                <button className="btn btn-primary btn-sm" onClick={() => choose(c)}>
-                  This is them
-                </button>
-                {safeUrl(c.url) && (
-                  <a href={safeUrl(c.url)!} target="_blank" rel="noreferrer" className="position-open">
-                    Open profile ↗
-                  </a>
-                )}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

@@ -183,7 +183,34 @@ export function parseLinkedInResult(r: RawResult): PositionCandidate {
   const experience = field(r.body, 'Experience')
   const education = field(r.body, 'Education')
   const location = field(r.body, 'Location')
-  if (headline && location && headline.toLowerCase().includes(location.toLowerCase())) headline = null
+
+  // The title's second part is sometimes just the location or an
+  // organisation ("Dylan Haussecker - University of Saskatchewan"), not a job title.
+  const same = (a: string | null, b: string | null): boolean =>
+    !!a && !!b && a.toLowerCase() === b.toLowerCase()
+  if (
+    headline &&
+    ((location && headline.toLowerCase().includes(location.toLowerCase())) ||
+      same(headline, experience) ||
+      same(headline, education))
+  ) {
+    headline = null
+  }
+
+  // LinkedIn snippets usually open with the profile headline before the
+  // labelled fields: "Co-Founder and CTO @ KeenSite · Experience: … · Education: …".
+  if (!headline) headline = leadingHeadline(r.body, [experience, education, location])
 
   return { name, headline, experience, education, location, url: r.href, snippet: r.body }
+}
+
+/** The snippet's first "·" segment, when it reads like a headline rather than a field, bio or boilerplate. */
+function leadingHeadline(body: string, knownValues: (string | null)[]): string | null {
+  const first = body.split(' · ')[0]?.trim() ?? ''
+  if (!first || first.length > 100) return null
+  if (/^[A-Za-z ]{3,20}:/.test(first)) return null // "Education: …"
+  if (/\.\s/.test(first) || /^(hi|hello|i am|i'm|view)\b/i.test(first)) return null // a sentence, not a headline
+  if (/linkedin/i.test(first)) return null
+  if (knownValues.some((v) => v && v.toLowerCase() === first.toLowerCase())) return null
+  return first.replace(/\s*(\.\.\.|…)$/, '')
 }
