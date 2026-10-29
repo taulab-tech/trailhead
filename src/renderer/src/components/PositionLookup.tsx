@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import type { PositionCandidate, PositionSearchResult, Student } from '../../../shared/types'
 import { formatSince } from '../lib/positions'
-import { suggestedPosition } from '../../../shared/positions'
+import { namesSwapped, suggestedPosition } from '../../../shared/positions'
 
 function safeUrl(url: string | null): string | null {
   return url && /^https:\/\//i.test(url) ? url : null
@@ -87,6 +87,11 @@ export default function PositionLookup({
   }
 
   const savedUrl = safeUrl(student.positionUrl)
+
+  const swapNames = async (): Promise<void> => {
+    await window.api.updateStudent(student.id, { firstName: student.lastName, lastName: student.firstName })
+    onSaved()
+  }
 
   const draftEditor = draft && (
     <div className="position-draft">
@@ -271,6 +276,14 @@ export default function PositionLookup({
                         <span className="position-match">Studied at {c.institutionMatch}</span>
                       )}
                     </div>
+                    {namesSwapped(c.name, student.firstName, student.lastName) && (
+                      <div className="position-swap">
+                        This profile says “{c.name}”, so the first and last name may be swapped in your records.{' '}
+                        <button className="review-link" onClick={swapNames}>
+                          Swap first and last name
+                        </button>
+                      </div>
+                    )}
                     {c.headline ? (
                       <div className="position-candidate-headline">{c.headline}</div>
                     ) : (

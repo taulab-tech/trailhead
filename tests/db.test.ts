@@ -17,7 +17,7 @@ import { createCategory, deleteCategory, listCategories } from '../src/main/db/c
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
 import { buildPositionQuery, isLinkedInProfile, nameMatches, ownPart, parseLinkedInResult, rankByInstitution } from '../src/main/positionLookup'
 import { getSettings, setInstitutionNames } from '../src/main/db/settings'
-import { strongMatch } from '../src/shared/positions'
+import { namesSwapped, strongMatch } from '../src/shared/positions'
 import {
   configureLookupsForTesting,
   dismissLookups,
@@ -622,4 +622,13 @@ test('a profile shown with only a last initial matches when its address spells t
   })
   assert.equal(r.name, 'Marisol O.')
   assert.equal(r.headline, 'Resident Engineering Team - E&I Mining')
+})
+
+test('a profile with the student’s name in reverse order is spotted, and still counts as them', () => {
+  assert.equal(namesSwapped('Blake Marlow', 'Marlow', 'Blake'), true)
+  assert.equal(nameMatches('Blake Marlow', 'Marlow', 'Blake'), true)
+  assert.equal(namesSwapped('Marlow Blake', 'Marlow', 'Blake'), false)
+  assert.equal(namesSwapped('Blake M. Marlow', 'Marlow', 'Blake'), true)
+  assert.equal(namesSwapped('Lee Lee', 'Lee', 'Lee'), false)
+  assert.equal(namesSwapped('Tyrel Kostyk', 'Marlow', 'Blake'), false)
 })

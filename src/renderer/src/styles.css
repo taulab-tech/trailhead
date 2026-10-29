@@ -2068,3 +2068,13 @@ input[type='month'] {
   margin: 4px 0 0;
   font-size: 13px;
 }
+
+.position-swap {
+  margin: 6px 0 2px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--warn-soft);
+  border: 1px solid #efd9ab;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}

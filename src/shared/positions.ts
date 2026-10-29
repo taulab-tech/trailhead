@@ -33,3 +33,24 @@ export function strongMatch<
   const last = lastName.trim().toLowerCase()
   return last && match.name.toLowerCase().includes(last) ? match : null
 }
+
+/**
+ * True when a profile's name is the student's name in reverse order —
+ * "Blake Marlow" for a student saved as first "Marlow", last "Blake" —
+ * which usually means the roster had the columns the other way round.
+ */
+export function namesSwapped(candidateName: string, firstName: string, lastName: string): boolean {
+  const words = (s: string): string[] =>
+    s
+      .toLowerCase()
+      .replace(/[^\p{L}\s'-]/gu, '')
+      .split(/\s+/)
+      .filter(Boolean)
+  const have = words(candidateName)
+  const first = words(firstName)
+  const last = words(lastName)
+  if (first.length === 0 || last.length === 0 || have.length < first.length + last.length) return false
+  const startsWithLast = last.every((w, i) => have[i] === w)
+  const endsWithFirst = first.every((w, i) => have[have.length - first.length + i] === w)
+  return startsWithLast && endsWithFirst && first.join(' ') !== last.join(' ')
+}
