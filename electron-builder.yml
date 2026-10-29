@@ -9,7 +9,12 @@ files:
 asarUnpack:
   - '**/*.node'
 win:
-  target: nsis
+  # Installer, plus no-install options for locked-down machines: a single
+  # portable .exe and a zip of the app folder.
+  target:
+    - nsis
+    - portable
+    - zip
   # Private Python + ddgs for the position lookup (see scripts/bundle-python.cjs).
   extraResources:
     - from: python-runtime/win
@@ -23,3 +28,5 @@ linux:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+portable:
+  artifactName: Trailhead ${version} Portable.exe

@@ -75,7 +75,7 @@ SQLite driver is compiled for.
 ## Building an installer
 
 ```bash
-npm run dist:win    # Windows installer (.exe)
+npm run dist:win    # Windows: installer, portable .exe and .zip (no install needed)
 npm run dist:mac    # macOS (.dmg)
 npm run dist:linux  # Linux (AppImage)
 ```
