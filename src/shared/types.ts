@@ -235,6 +235,8 @@ export interface PositionSearchResult {
   candidates: PositionCandidate[]
   /** Set when the narrowing words found nothing and the name alone was searched instead. */
   broadenedFrom: string | null
+  /** LinkedIn profiles dropped because they belong to someone with a different name. */
+  otherNamesHidden: number
 }
 
 export interface AppSettings {

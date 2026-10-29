@@ -10,6 +10,17 @@ interface Choice {
 }
 
 const POLL_MS = 2000
+/** Above this many, starting a bulk lookup asks first — it takes a while and risks being rate-limited. */
+const CONFIRM_ABOVE = 50
+
+function durationFor(count: number, secondsPerSearch: number): string {
+  const minutes = Math.ceil((count * secondsPerSearch) / 60)
+  if (minutes <= 1) return 'about a minute'
+  if (minutes < 60) return `about ${minutes} minutes`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return `about ${hours} hour${hours === 1 ? '' : 's'}${rest ? ` ${rest} min` : ''}`
+}
 
 function safeUrl(url: string): string | null {
   return /^https:\/\//i.test(url) ? url : null
@@ -38,12 +49,20 @@ export default function LinkedInMatches({ onNavigate }: { onNavigate: (page: str
   const [choices, setChoices] = useState<Record<string, Choice | null>>({})
   const [saving, setSaving] = useState(false)
   const lastStatus = useRef<LookupStatus | null>(null)
+  // Students with no saved position who aren't queued or awaiting review.
+  const [notLookedUp, setNotLookedUp] = useState<string[]>([])
 
   const reload = async (): Promise<void> => {
-    const [s, list] = await Promise.all([window.api.getLookupStatus(), window.api.listLookups()])
+    const [s, list, students] = await Promise.all([
+      window.api.getLookupStatus(),
+      window.api.listLookups(),
+      window.api.listStudents()
+    ])
     lastStatus.current = s
     setStatus(s)
     setItems(list)
+    const inQueue = new Set(list.map((i) => i.student.id))
+    setNotLookedUp(students.filter((st) => !st.position && !inQueue.has(st.id)).map((st) => st.id))
     // Pre-tick strong matches the first time they appear; never override the user's edits.
     setChoices((prev) => {
       const next = { ...prev }
@@ -115,6 +134,21 @@ export default function LinkedInMatches({ onNavigate }: { onNavigate: (page: str
     } finally {
       setSaving(false)
     }
+  }
+
+  const startBulk = async (): Promise<void> => {
+    const count = notLookedUp.length
+    const duration = durationFor(count, status?.secondsPerSearch ?? 8)
+    if (
+      count > CONFIRM_ABOVE &&
+      !confirm(
+        `Look up ${count} students on LinkedIn? At one search every ${status?.secondsPerSearch ?? 8} seconds this takes ${duration}, and the search engine may start refusing partway — the search pauses itself if it does. You can stop it at any time.`
+      )
+    ) {
+      return
+    }
+    await window.api.enqueueLookups(notLookedUp)
+    await reload()
   }
 
   const skip = async (studentIds: string[]): Promise<void> => {
@@ -207,13 +241,27 @@ export default function LinkedInMatches({ onNavigate }: { onNavigate: (page: str
         </div>
       )}
 
-      {nothing && (
+      {status && !status.running && notLookedUp.length > 0 && (
+        <div className="card lookup-start">
+          <div>
+            <b>
+              {notLookedUp.length} student{notLookedUp.length === 1 ? ' doesn’t' : 's don’t'} have a position yet.
+            </b>
+            <p className="text-dim">
+              Searches LinkedIn for each of them in the background — {durationFor(notLookedUp.length, status.secondsPerSearch)},
+              one search every {status.secondsPerSearch} seconds. Matches appear here for you to approve.
+            </p>
+          </div>
+          <button className="btn btn-primary" onClick={startBulk}>
+            Find LinkedIn matches for {notLookedUp.length} student{notLookedUp.length === 1 ? '' : 's'}
+          </button>
+        </div>
+      )}
+
+      {nothing && notLookedUp.length === 0 && (
         <div className="card empty-state">
           <h3 style={{ color: 'var(--text)', marginTop: 0 }}>Nothing to review</h3>
-          <p>
-            After importing a roster, use <b>Find LinkedIn matches</b> on the import screen to look up the new students
-            here.
-          </p>
+          <p>Every student has a saved position. New students from future imports can be looked up from here.</p>
         </div>
       )}
 

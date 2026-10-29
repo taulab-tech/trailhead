@@ -2055,3 +2055,16 @@ input[type='month'] {
   margin: 0 0 16px;
   color: var(--text-dim);
 }
+
+.lookup-start {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.lookup-start p {
+  margin: 4px 0 0;
+  font-size: 13px;
+}

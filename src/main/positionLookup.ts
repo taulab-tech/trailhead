@@ -1,6 +1,7 @@
 import { spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
+import { normalizeName } from './normalize'
 import type { PositionCandidate, PositionSearchResult } from '../shared/types'
 
 /**
@@ -87,11 +88,15 @@ export async function lookUpPosition(
   extraTerms = '',
   institutionNames: string[] = []
 ): Promise<PositionSearchResult> {
+  const onlyThisPerson = (r: PositionSearchResult): PositionSearchResult => {
+    const kept = r.candidates.filter((c) => nameMatches(c.name, firstName, lastName))
+    return { ...r, candidates: kept, otherNamesHidden: r.candidates.length - kept.length }
+  }
   const query = buildPositionQuery(firstName, lastName, extraTerms)
-  let result = await searchPositions(query)
+  let result = onlyThisPerson(await searchPositions(query))
   const plainQuery = buildPositionQuery(firstName, lastName)
   if (result.candidates.length === 0 && query !== plainQuery) {
-    result = { ...(await searchPositions(plainQuery)), broadenedFrom: query }
+    result = { ...onlyThisPerson(await searchPositions(plainQuery)), broadenedFrom: query }
   }
   return { ...result, candidates: rankByInstitution(result.candidates, institutionNames) }
 }
@@ -123,7 +128,8 @@ function searchPositions(query: string): Promise<PositionSearchResult> {
         query,
         resultCount: raw.length,
         candidates: raw.filter(isLinkedInProfile).map(parseLinkedInResult),
-        broadenedFrom: null
+        broadenedFrom: null,
+        otherNamesHidden: 0
       }
     } finally {
       lastSearchAt = Date.now()
@@ -209,11 +215,13 @@ export function parseLinkedInResult(r: RawResult): PositionCandidate {
   const titleCore = r.title.replace(/\s*[|–-]\s*LinkedIn.*$/i, '').replace(/\s*\|.*$/, '')
   const dash = titleCore.indexOf(' - ')
   const name = (dash >= 0 ? titleCore.slice(0, dash) : titleCore).trim()
-  let headline: string | null = dash >= 0 ? titleCore.slice(dash + 3).trim() || null : null
+  let headline: string | null = dash >= 0 ? ownPart(titleCore.slice(dash + 3)).trim() || null : null
 
-  const experience = field(r.body, 'Experience')
-  const education = field(r.body, 'Education')
-  const location = field(r.body, 'Location')
+  // Only this person's part of the text — see ownPart.
+  const body = ownPart(r.body)
+  const experience = field(body, 'Experience')
+  const education = field(body, 'Education')
+  const location = field(body, 'Location')
 
   // The title's second part is sometimes just the location or an
   // organisation ("Dylan Haussecker - University of Saskatchewan"), not a job title.
@@ -230,9 +238,39 @@ export function parseLinkedInResult(r: RawResult): PositionCandidate {
 
   // LinkedIn snippets usually open with the profile headline before the
   // labelled fields: "Co-Founder and CTO @ KeenSite · Experience: … · Education: …".
-  if (!headline) headline = leadingHeadline(r.body, [experience, education, location])
+  if (!headline) headline = leadingHeadline(body, [experience, education, location])
 
-  return { name, headline, experience, education, location, url: r.href, snippet: r.body, institutionMatch: null }
+  return { name, headline, experience, education, location, url: r.href, snippet: body, institutionMatch: null }
+}
+
+/**
+ * Some results come from LinkedIn pages that list several people, so their
+ * text runs on into other profiles: "Firmware Developer II at Bourgault
+ * Industries ...McKenzie Maduke - Resource Management Officer at Parks
+ * Canada ...Cheryl Brown - Payroll ...". Everything from the first such
+ * "...Firstname Lastname - " onward is someone else and is cut off.
+ */
+export function ownPart(text: string): string {
+  const other = text.match(/\s*(?:\.\.\.|…)\s*\p{Lu}[\p{L}'’.-]*(?:\s+\p{Lu}[\p{L}'’.-]*){1,3}\s+[-–]\s+/u)
+  return other ? text.slice(0, other.index) : text
+}
+
+/**
+ * Whether a result is the searched person by name: both the first and last
+ * name appear, in either order, with a first name allowed to be a short form
+ * of the other ("Chris" ↔ "Christopher"). Search engines don't always honour
+ * the quoted name and return unrelated people.
+ */
+export function nameMatches(candidateName: string, firstName: string, lastName: string): boolean {
+  const words = (s: string): string[] => normalizeName(s).split(' ').filter(Boolean)
+  const have = words(candidateName)
+  const last = words(lastName)
+  const first = words(firstName)[0]
+  if (last.length === 0 || !last.every((w) => have.includes(w))) return false
+  if (!first) return true
+  return have.some(
+    (w) => w === first || (Math.min(w.length, first.length) >= 3 && (w.startsWith(first) || first.startsWith(w)))
+  )
 }
 
 /** The snippet's first "·" segment, when it reads like a headline rather than a field, bio or boilerplate. */

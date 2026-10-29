@@ -15,7 +15,7 @@ import { listPossibleDuplicates, suggestDuplicate } from '../src/main/db/duplica
 import { listEvents } from '../src/main/db/events'
 import { createCategory, deleteCategory, listCategories } from '../src/main/db/categories'
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
-import { buildPositionQuery, isLinkedInProfile, parseLinkedInResult, rankByInstitution } from '../src/main/positionLookup'
+import { buildPositionQuery, isLinkedInProfile, nameMatches, ownPart, parseLinkedInResult, rankByInstitution } from '../src/main/positionLookup'
 import { getSettings, setInstitutionNames } from '../src/main/db/settings'
 import { strongMatch } from '../src/shared/positions'
 import {
@@ -531,7 +531,7 @@ test('background lookups search queued students and save nothing until approved'
     secondsPerSearch: 0,
     search: async (first, last) => {
       searched.push(`${first} ${last}`)
-      return { query: `"${first} ${last}"`, resultCount: 0, candidates: [], broadenedFrom: null }
+      return { query: `"${first} ${last}"`, resultCount: 0, candidates: [], broadenedFrom: null, otherNamesHidden: 0 }
     }
   })
   try {
@@ -577,4 +577,33 @@ test('background lookups pause after three failed searches in a row', async () =
   } finally {
     configureLookupsForTesting({})
   }
+})
+
+test('a result that runs on into other people keeps only its own person’s details', () => {
+  const r = parseLinkedInResult({
+    title:
+      'Tyrel Kostyk - Firmware Developer II at Bourgault Industries ...McKenzie Maduke - Resource Management Officer at Parks Canada ...Cheryl Brown - Payroll-Data Entry / Tax assistant at Baker | LinkedIn',
+    body:
+      'Firmware Developer II at Bourgault Industries Ltd. · Experienced Computer Engineering EIT with a demonstrated history of working on electronics ...McKenzie Maduke - Resource Management Officer at Parks Canada · Experience: Parks Canada · Education: Brandon University · Location: Whitehorse ...Cassie Lam - Senior experienced Japanese Teacher · University of Saskatchewan',
+    href: 'https://ca.linkedin.com/in/example'
+  })
+  assert.equal(r.name, 'Tyrel Kostyk')
+  assert.equal(r.headline, 'Firmware Developer II at Bourgault Industries')
+  assert.equal(r.experience, null)
+  assert.equal(r.education, null)
+  assert.equal(r.location, null)
+  assert.doesNotMatch(r.snippet, /Maduke|Parks Canada|Saskatchewan/)
+  // So another person's school can't earn it a "Studied at" badge either.
+  assert.equal(rankByInstitution([r], ['University of Saskatchewan'])[0].institutionMatch, null)
+  // An ordinary snippet is untouched.
+  assert.equal(ownPart('Engineer at X · Experience: X · Location: Saskatoon'), 'Engineer at X · Experience: X · Location: Saskatoon')
+})
+
+test('only profiles with the student’s name count, in either order and allowing short first names', () => {
+  assert.equal(nameMatches('Tyrel Kostyk', 'Marlow', 'Blake'), false)
+  assert.equal(nameMatches('Blake Marlow', 'Marlow', 'Blake'), true)
+  assert.equal(nameMatches('Christopher Elash', 'Chris', 'Elash'), true)
+  assert.equal(nameMatches('Chris Elashian', 'Chris', 'Elash'), false)
+  assert.equal(nameMatches('Nadia Oyelaran', 'Nadia', 'Oyelaran'), true)
+  assert.equal(nameMatches('Nadira Oyelaran', 'Nadia', 'Oyelaran'), false)
 })

@@ -235,7 +235,12 @@ export default function PositionLookup({
           )}
           Searched <span className="mono">{lookup.query}</span> · {lookup.resultCount} result
           {lookup.resultCount === 1 ? '' : 's'}
-          {lookup.resultCount > 0 && lookup.candidates.length === 0 && ', none of them LinkedIn profiles'}
+          {lookup.resultCount > 0 &&
+            lookup.candidates.length === 0 &&
+            !lookup.otherNamesHidden &&
+            ', none of them LinkedIn profiles'}
+          {lookup.otherNamesHidden > 0 &&
+            ` · ${lookup.otherNamesHidden} profile${lookup.otherNamesHidden === 1 ? '' : 's'} for other people hidden`}
         </p>
       )}
 
