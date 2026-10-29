@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import type { EventRecord, Student, StudentDetail } from '../../../shared/types'
+import type { AttendanceDate, EventCategory, EventRecord, Student, StudentDetail } from '../../../shared/types'
 import PositionLookup from './PositionLookup'
+import JourneyTimeline from './JourneyTimeline'
+import { buildJourneys, trailStages } from '../../../shared/journeys'
+import { colorForIndex } from '../lib/palette'
 
 export default function StudentDetailDrawer({
   studentId,
@@ -14,6 +17,8 @@ export default function StudentDetailDrawer({
   const [detail, setDetail] = useState<StudentDetail | null>(null)
   const [form, setForm] = useState<Record<string, string>>({})
   const [events, setEvents] = useState<EventRecord[]>([])
+  const [categories, setCategories] = useState<EventCategory[]>([])
+  const [attendanceDates, setAttendanceDates] = useState<AttendanceDate[]>([])
   const [addEventId, setAddEventId] = useState('')
   const [mergeQuery, setMergeQuery] = useState('')
   const [mergeResults, setMergeResults] = useState<Student[]>([])
@@ -42,6 +47,8 @@ export default function StudentDetailDrawer({
   useEffect(() => {
     load()
     window.api.listEvents().then(setEvents)
+    window.api.listCategories().then(setCategories)
+    window.api.getAttendanceDates().then((dates) => setAttendanceDates(dates.filter((d) => d.studentId === studentId)))
   }, [studentId])
 
   useEffect(() => {
@@ -92,6 +99,18 @@ export default function StudentDetailDrawer({
   }
 
   const attendedEventIds = new Set(detail.attendances.map((a) => a.eventId))
+  const onTrail = categories.filter((c) => c.stageOrder !== null)
+  const journey =
+    buildJourneys(
+      events,
+      detail.attendances.map((a) => ({ eventId: a.eventId, studentIds: [detail.id] })),
+      attendanceDates,
+      categories
+    ).get(detail.id) ?? null
+  const colorForCategory = (categoryId: string | null): string | null => {
+    const i = onTrail.findIndex((c) => c.id === categoryId)
+    return i >= 0 ? colorForIndex(i) : null
+  }
 
   return (
     <div className="drawer-overlay" onClick={onClose}>
@@ -210,30 +229,17 @@ export default function StudentDetailDrawer({
           }}
         />
 
-        <div className="section-title">
-          Programs &amp; events attended ({detail.attendances.length})
-        </div>
-        {detail.attendances.length === 0 && <p className="text-dim">None yet.</p>}
-        {detail.attendances.map((a) => (
-          <div
-            key={a.id}
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '6px 0',
-              borderBottom: '1px solid var(--border-soft)'
-            }}
-          >
-            <div>
-              <div>{a.eventName}</div>
-              {a.eventDate && <div className="text-faint">{a.eventDate}</div>}
-            </div>
-            <button className="btn btn-ghost btn-sm" onClick={() => removeAttendance(a.id)}>
-              Remove
-            </button>
-          </div>
-        ))}
+        <div className="section-title">Path ({detail.attendances.length} event{detail.attendances.length === 1 ? '' : 's'})</div>
+        <JourneyTimeline
+          journey={journey}
+          totalStops={trailStages(categories).length}
+          colorForCategory={colorForCategory}
+          student={detail}
+          onRemove={(eventId) => {
+            const attendance = detail.attendances.find((a) => a.eventId === eventId)
+            if (attendance) removeAttendance(attendance.id)
+          }}
+        />
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <select value={addEventId} onChange={(e) => setAddEventId(e.target.value)} style={{ flex: 1 }}>
             <option value="">Add to event…</option>

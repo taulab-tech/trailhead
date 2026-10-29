@@ -1,15 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import type {
-  AttendanceDate,
-  DashboardStats,
-  EventCategory,
-  EventRecord,
-  FunnelStats,
-  Student
-} from '../../../shared/types'
-import FunnelDiagram from '../components/FunnelDiagram'
+import type { AttendanceDate, DashboardStats, EventCategory, EventRecord, Student } from '../../../shared/types'
 import FunnelDrillDrawer, { type FunnelSelection } from '../components/FunnelDrillDrawer'
-import EventDetailDrawer from '../components/EventDetailDrawer'
+import PathwayExplorer from '../components/PathwayExplorer'
 import StudentDetailDrawer from '../components/StudentDetailDrawer'
 import { trailStopLabel } from '../lib/stageLabel'
 import { colorForIndex } from '../lib/palette'
@@ -75,21 +67,20 @@ function TrailSection({
   stats,
   students,
   onNavigate,
-  onOpenStudents
+  onOpenStudents,
+  onOpenStudent
 }: {
   stats: DashboardStats
   students: Student[]
   onNavigate: (page: string) => void
   onOpenStudents: (selection: FunnelSelection) => void
+  onOpenStudent: (id: string) => void
 }): React.JSX.Element {
   const [allEvents, setAllEvents] = useState<EventRecord[]>([])
   const [eventStudentSets, setEventStudentSets] = useState<{ eventId: string; studentIds: string[] }[]>([])
   const [attendanceDates, setAttendanceDates] = useState<AttendanceDate[]>([])
   const [categories, setCategories] = useState<EventCategory[]>([])
   const [selectedYear, setSelectedYear] = useState<number | 'overall'>('overall')
-  const [showDetail, setShowDetail] = useState(false)
-  const [funnel, setFunnel] = useState<FunnelStats>(stats.funnel)
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
 
   useEffect(() => {
     window.api.listEvents().then(setAllEvents)
@@ -97,10 +88,6 @@ function TrailSection({
     window.api.getAttendanceDates().then(setAttendanceDates)
     window.api.listCategories().then(setCategories)
   }, [])
-
-  useEffect(() => {
-    window.api.getFunnelForYear(selectedYear === 'overall' ? null : selectedYear).then(setFunnel)
-  }, [selectedYear, stats])
 
   const scopedEvents = useMemo(() => {
     if (selectedYear === 'overall') return allEvents
@@ -158,6 +145,7 @@ function TrailSection({
     stops.length > 1 && entry ? [...entry.studentIds].filter((id) => stops.every((s) => s.studentIds.has(id))).length : 0
 
   return (
+    <>
     <div className="card dash-trail">
       <div className="dash-card-head">
         <div>
@@ -187,9 +175,6 @@ function TrailSection({
               </option>
             ))}
           </select>
-          <button className="btn btn-sm" onClick={() => setShowDetail((v) => !v)}>
-            {showDetail ? 'Hide detailed flow' : 'Detailed flow'}
-          </button>
         </div>
       </div>
 
@@ -301,33 +286,26 @@ function TrailSection({
         </p>
       )}
 
-      {showDetail && (
-        <div className="dash-detail">
-          <FunnelDiagram
-            funnel={funnel}
-            events={scopedEvents}
-            eventStudentSets={scopedEventStudentSets}
-            attendanceDates={attendanceDates}
-            allStudents={students}
-            onSelect={onOpenStudents}
-            onSelectEvent={setSelectedEventId}
-          />
-          <p className="dash-note">
-            Click a group to expand it into its events; click a flow to see the students behind it.
-          </p>
-        </div>
-      )}
-
-      {selectedEventId && (
-        <EventDetailDrawer
-          eventId={selectedEventId}
-          categories={categories}
-          onClose={() => setSelectedEventId(null)}
-          onDeleted={() => setSelectedEventId(null)}
-          onCategoryCreated={(cat) => setCategories((prev) => [...prev, cat])}
-        />
-      )}
     </div>
+
+    {stops.length > 0 && (
+      <div className="card dash-paths">
+        <h2 className="dash-card-title">Student paths</h2>
+        <p className="dash-card-sub" style={{ marginTop: -10, marginBottom: 16 }}>
+          How each student moved along the trail{selectedYear === 'overall' ? '' : ` in ${selectedYear}`}, by the dates
+          of the events they attended. Pick a path to see who took it; click a student for their full timeline.
+        </p>
+        <PathwayExplorer
+          events={scopedEvents}
+          eventStudentSets={scopedEventStudentSets}
+          attendanceDates={attendanceDates}
+          categories={categories}
+          students={students}
+          onOpenStudent={onOpenStudent}
+        />
+      </div>
+    )}
+    </>
   )
 }
 
@@ -520,7 +498,13 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: strin
             </div>
           )}
 
-          <TrailSection stats={stats} students={students} onNavigate={onNavigate} onOpenStudents={setSelection} />
+          <TrailSection
+            stats={stats}
+            students={students}
+            onNavigate={onNavigate}
+            onOpenStudents={setSelection}
+            onOpenStudent={setOpenStudentId}
+          />
 
           <WhereTheyAreNow students={students} furthestStop={furthestStop} onOpenStudent={setOpenStudentId} />
 

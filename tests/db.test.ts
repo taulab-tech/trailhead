@@ -27,6 +27,7 @@ import {
 } from '../src/main/positionLookup'
 import { getSettings, setInstitutionNames } from '../src/main/db/settings'
 import { namesSwapped, strongMatch } from '../src/shared/positions'
+import { buildJourneys } from '../src/shared/journeys'
 import {
   configureLookupsForTesting,
   dismissLookups,
@@ -683,4 +684,48 @@ test('when the exact name finds nobody, the reversed name and then a looser sear
   } finally {
     configureSearchForTesting({})
   }
+})
+
+test('each student’s path is classified by the dates of the events they attended', () => {
+  const categories = [
+    { id: 'hack', name: 'Hackathon', stageOrder: 1 },
+    { id: 'class', name: 'Class', stageOrder: 2 },
+    { id: 'prog', name: 'Program', stageOrder: 3 },
+    { id: 'social', name: 'Social', stageOrder: null }
+  ]
+  const events = [
+    { id: 'h24', name: 'Hackathon 2024', date: '2024-03-01', categoryId: 'hack' },
+    { id: 'c24', name: 'Class 2024', date: '2024-09-01', categoryId: 'class' },
+    { id: 'p25', name: 'Program 2025', date: '2025-06-01', categoryId: 'prog' },
+    { id: 'c22', name: 'Class 2022', date: '2022-09-01', categoryId: 'class' },
+    { id: 'cx', name: 'Class (undated)', date: null, categoryId: 'class' },
+    { id: 's1', name: 'Social', date: '2024-12-01', categoryId: 'social' },
+    { id: 'h-same', name: 'Hackathon same day', date: '2024-09-01', categoryId: 'hack' }
+  ]
+  const sets = [
+    { eventId: 'h24', studentIds: ['inOrder', 'skipped', 'single'] },
+    { eventId: 'c24', studentIds: ['inOrder', 'tie'] },
+    { eventId: 'p25', studentIds: ['inOrder', 'skipped'] },
+    { eventId: 'c22', studentIds: ['backwards'] },
+    { eventId: 'h-same', studentIds: ['backwards', 'tie'] },
+    { eventId: 'cx', studentIds: ['unknown', 'inferred'] },
+    { eventId: 's1', studentIds: ['unknown', 'offTrail'] }
+  ]
+  sets.push({ eventId: 'h24', studentIds: ['unknown', 'inferred'] })
+  const dates = [{ studentId: 'inferred', eventId: 'cx', date: '2024-09-01' }]
+  const journeys = buildJourneys(events, sets, dates, categories)
+  const status = (id: string) => journeys.get(id)!.status
+
+  assert.equal(status('inOrder'), 'in-order')
+  assert.deepEqual(journeys.get('inOrder')!.path, [0, 1, 2])
+  assert.equal(status('skipped'), 'skipped')
+  assert.equal(status('single'), 'single')
+  assert.equal(status('backwards'), 'out-of-order') // Class in 2022, then Hackathon in 2024
+  assert.deepEqual(journeys.get('backwards')!.path, [1, 0])
+  assert.equal(journeys.get('backwards')!.steps.find((s) => s.eventId === 'h-same')!.outOfOrder, true)
+  assert.equal(status('tie'), 'in-order') // same-day Hackathon and Class isn't "out of order"
+  assert.equal(status('unknown'), 'unknown') // an undated class can't be placed
+  assert.equal(status('inferred'), 'in-order') // ...unless the student's term date fills it in
+  assert.equal(journeys.get('inferred')!.steps.find((s) => s.eventId === 'cx')!.dateInferred, true)
+  assert.equal(status('offTrail'), 'off-trail')
 })

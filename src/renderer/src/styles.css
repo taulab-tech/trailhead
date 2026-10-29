@@ -2096,3 +2096,310 @@ input[type='month'] {
   color: var(--good);
   font-weight: 600;
 }
+
+/* ---------- Student paths ---------- */
+
+.dash-paths {
+  margin-top: 16px;
+}
+
+.paths-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.paths-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.paths-filter:hover {
+  border-color: #c8cfca;
+  color: var(--text);
+}
+
+.paths-filter.is-active {
+  background: var(--sidebar-bg);
+  border-color: var(--sidebar-bg);
+  color: var(--sidebar-text-strong);
+}
+
+.paths-filter-count {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.paths-filter-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.paths-filter-dot.is-in-order { background: var(--good); }
+.paths-filter-dot.is-skipped { background: #2f6b9a; }
+.paths-filter-dot.is-out-of-order { background: #c97a1e; }
+.paths-filter-dot.is-single { background: #8a948f; }
+.paths-filter-dot.is-unknown { background: #c3cbc6; }
+
+.paths-hint {
+  margin: 10px 2px 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.paths-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 28px;
+  margin-top: 20px;
+}
+
+.paths-col-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 10px;
+}
+
+.paths-patterns {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.paths-pattern {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 90px 36px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.paths-pattern:hover {
+  background: #f7f9f8;
+}
+
+.paths-pattern.is-active {
+  background: var(--accent-soft);
+  border-color: #cfe1d9;
+}
+
+.paths-pattern-label {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paths-pattern-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-elevated-2);
+  overflow: hidden;
+}
+
+.paths-pattern-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+}
+
+.paths-pattern-count {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.paths-more {
+  margin: 6px 10px 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.paths-table td {
+  padding: 8px 10px;
+}
+
+.paths-student {
+  font-weight: 600;
+}
+
+.paths-student-job {
+  font-weight: 400;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.paths-status {
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.paths-status .paths-filter-dot {
+  margin-right: 6px;
+}
+
+/* Compact path: numbered stops joined by short links. */
+.journey-path {
+  display: inline-flex;
+  align-items: center;
+}
+
+.journey-path-stop {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.journey-path-link {
+  width: 14px;
+  height: 2px;
+  background: #b9c2bd;
+}
+
+.journey-path.is-in-order .journey-path-link {
+  background: var(--good);
+}
+
+.journey-path-stop.is-back {
+  background: #c97a1e;
+}
+
+.journey-path-link.is-back {
+  background: repeating-linear-gradient(90deg, #c97a1e 0 3px, transparent 3px 6px);
+}
+
+.journey-path.is-unknown .journey-path-stop {
+  background: #8a948f;
+}
+
+.journey-path-note {
+  margin-left: 6px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* Student timeline */
+.journey-verdict {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--bg-elevated-2);
+  color: var(--text-dim);
+}
+
+.journey-verdict.is-in-order { background: var(--good-soft); color: var(--good); }
+.journey-verdict.is-out-of-order { background: var(--warn-soft); color: var(--warn); }
+.journey-verdict.is-skipped { background: #e8f0f7; color: #2f6b9a; }
+
+.journey-verdict-detail {
+  font-weight: 400;
+}
+
+.journey-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.journey-step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 0 0 16px 0;
+}
+
+/* The vertical line joining the dots. */
+.journey-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 16px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+
+.journey-dot {
+  position: relative;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px var(--bg-elevated);
+}
+
+.journey-dot.is-now {
+  background: var(--brand-mark);
+}
+
+.journey-step-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.journey-step-date {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.journey-step-name {
+  font-weight: 600;
+}
+
+.journey-step-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.journey-stop-pill {
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
