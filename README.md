@@ -55,6 +55,9 @@ npm install
 npm run dev
 ```
 
+`npm run dev` reloads the screens instantly and restarts the app when background (main-process)
+code changes.
+
 This opens the app in a window. Your data is stored in a local SQLite file in your OS user-data
 folder (on Windows: `%APPDATA%\Trailhead\trailhead.db`) — it persists
 between runs automatically.

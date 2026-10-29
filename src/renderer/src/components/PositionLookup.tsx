@@ -256,9 +256,11 @@ export default function PositionLookup({
         </div>
       )}
 
-      {candidates && candidates.length === 0 && (
+      {lookup && candidates && candidates.length === 0 && (
         <p className="text-dim" style={{ fontSize: 13, margin: '6px 0 0' }}>
-          No LinkedIn profiles found. The search engine may also be limiting searches — try again in a minute.
+          {(lookup.attempts ?? []).every((a) => a.resultCount === 0) && lookup.resultCount === 0
+            ? 'Every search came back completely empty. That usually means the search engine is limiting you after many searches in a row, not that the person has no profile. Wait 10–15 minutes and try again.'
+            : 'No LinkedIn profile with this name turned up. If you can find them on Google, open their profile there and add the position with Edit.'}
         </p>
       )}
 
