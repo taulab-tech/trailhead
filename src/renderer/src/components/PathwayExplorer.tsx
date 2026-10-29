@@ -3,6 +3,7 @@ import type { AttendanceDate, EventCategory, EventRecord, Student } from '../../
 import { buildJourneys, JOURNEY_STATUS_LABELS, trailStages, type Journey, type JourneyStatus } from '../../../shared/journeys'
 import { trailStopLabel } from '../lib/stageLabel'
 import JourneyPath from './JourneyPath'
+import PathwayDiagram, { type DiagramFocus } from './PathwayDiagram'
 
 const FILTERS: (JourneyStatus | 'all')[] = ['all', 'in-order', 'skipped', 'out-of-order', 'single', 'unknown']
 const FILTER_HINTS: Partial<Record<JourneyStatus, string>> = {
@@ -38,7 +39,9 @@ export default function PathwayExplorer({
 }): React.JSX.Element {
   const [filter, setFilter] = useState<JourneyStatus | 'all'>('all')
   const [pattern, setPattern] = useState<string | null>(null)
+  const [focus, setFocus] = useState<DiagramFocus | null>(null)
   const [showAllStudents, setShowAllStudents] = useState(false)
+  const [showAllPaths, setShowAllPaths] = useState(false)
 
   const totalStops = trailStages(categories).length
   const journeys = useMemo(
@@ -69,7 +72,27 @@ export default function PathwayExplorer({
     return [...byKey.values()].sort((a, b) => b.count - a.count || b.sample.path.length - a.sample.path.length)
   }, [filtered])
 
-  const listed = (pattern ? filtered.filter((j) => pathKey(j) === pattern) : filtered)
+  const inFocus = (j: Journey): boolean => {
+    if (pattern) return pathKey(j) === pattern
+    if (focus?.kind === 'stop') return j.stops.includes(focus.stop)
+    if (focus?.kind === 'link') return j.path.some((s, i) => i > 0 && j.path[i - 1] === focus.from && s === focus.to)
+    return true
+  }
+  const selectionTitle = pattern
+    ? 'Students on this path'
+    : focus?.kind === 'stop'
+      ? `Students who reached ${focus.stop + 1} · ${trailStopLabel(focus.stop, totalStops)}`
+      : focus?.kind === 'link'
+        ? `Students who went ${trailStopLabel(focus.from, totalStops)} → ${trailStopLabel(focus.to, totalStops)}`
+        : 'Students'
+  const clearSelection = (): void => {
+    setPattern(null)
+    setFocus(null)
+    setShowAllStudents(false)
+  }
+
+  const listed = filtered
+    .filter(inFocus)
     .map((j) => ({ journey: j, student: studentsById.get(j.studentId) }))
     .filter((r): r is { journey: Journey; student: Student } => !!r.student)
     .sort(
@@ -97,8 +120,7 @@ export default function PathwayExplorer({
             title={f === 'all' ? undefined : FILTER_HINTS[f]}
             onClick={() => {
               setFilter(f)
-              setPattern(null)
-              setShowAllStudents(false)
+              clearSelection()
             }}
           >
             {f !== 'all' && <span className={`paths-filter-dot is-${f}`} />}
@@ -109,15 +131,40 @@ export default function PathwayExplorer({
       </div>
       {filter !== 'all' && FILTER_HINTS[filter] && <p className="paths-hint">{FILTER_HINTS[filter]}.</p>}
 
+      <div className="paths-overview">
+        <PathwayDiagram
+          journeys={filtered}
+          totalStops={totalStops}
+          focus={focus}
+          onFocus={(f) => {
+            setPattern(null)
+            setFocus(f)
+            setShowAllStudents(false)
+          }}
+        />
+        <div className="paths-legend">
+          <span>
+            <span className="paths-legend-swatch is-forward" /> Moved forward
+          </span>
+          <span>
+            <span className="paths-legend-swatch is-back" /> Went back to an earlier stop
+          </span>
+          <span className="text-faint">Click a stop or a flow to see those students.</span>
+        </div>
+      </div>
+
       <div className="paths-grid">
         <div>
-          <div className="paths-col-title">Most common paths</div>
+          <div className="paths-col-title">
+            {showAllPaths ? `All paths · ${patterns.length}` : 'Most common paths'}
+          </div>
           <div className="paths-patterns">
-            {patterns.slice(0, VISIBLE_PATHS).map((p) => (
+            {(showAllPaths ? patterns : patterns.slice(0, VISIBLE_PATHS)).map((p) => (
               <button
                 key={p.key}
                 className={`paths-pattern ${pattern === p.key ? 'is-active' : ''}`}
                 onClick={() => {
+                  setFocus(null)
                   setPattern(pattern === p.key ? null : p.key)
                   setShowAllStudents(false)
                 }}
@@ -133,18 +180,18 @@ export default function PathwayExplorer({
               </button>
             ))}
             {patterns.length > VISIBLE_PATHS && (
-              <p className="paths-more">
-                +{patterns.length - VISIBLE_PATHS} less common path{patterns.length - VISIBLE_PATHS === 1 ? '' : 's'}
-              </p>
+              <button className="review-link paths-more" onClick={() => setShowAllPaths((v) => !v)}>
+                {showAllPaths ? 'Show only the most common' : `Show all ${patterns.length} paths`}
+              </button>
             )}
           </div>
         </div>
 
         <div>
           <div className="paths-col-title">
-            {pattern ? 'Students on this path' : 'Students'} <span className="text-faint">· {listed.length}</span>
-            {pattern && (
-              <button className="review-link" style={{ marginLeft: 10 }} onClick={() => setPattern(null)}>
+            {selectionTitle} <span className="text-faint">· {listed.length}</span>
+            {(pattern || focus) && (
+              <button className="review-link" style={{ marginLeft: 10 }} onClick={clearSelection}>
                 Show all
               </button>
             )}

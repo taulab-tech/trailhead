@@ -27,7 +27,7 @@ import {
 } from '../src/main/positionLookup'
 import { getSettings, setInstitutionNames } from '../src/main/db/settings'
 import { namesSwapped, strongMatch } from '../src/shared/positions'
-import { buildJourneys } from '../src/shared/journeys'
+import { buildJourneys, pathLinks, type Journey } from '../src/shared/journeys'
 import {
   configureLookupsForTesting,
   dismissLookups,
@@ -728,4 +728,14 @@ test('each student’s path is classified by the dates of the events they attend
   assert.equal(status('inferred'), 'in-order') // ...unless the student's term date fills it in
   assert.equal(journeys.get('inferred')!.steps.find((s) => s.eventId === 'cx')!.dateInferred, true)
   assert.equal(status('offTrail'), 'off-trail')
+})
+
+test('the overview counts each move between stops once per student', () => {
+  const j = (studentId: string, path: number[]): Journey => ({ studentId, steps: [], stops: [...new Set(path)].sort(), path, status: 'in-order' })
+  const links = pathLinks([j('a', [0, 1, 2]), j('b', [0, 1]), j('c', [1, 0, 1, 0]), j('d', [0])])
+  const count = (from: number, to: number) => links.find((l) => l.from === from && l.to === to)?.count ?? 0
+  assert.equal(count(0, 1), 3) // a, b, and c (who went 1 → 0 → 1 → 0)
+  assert.equal(count(1, 2), 1)
+  assert.equal(count(1, 0), 1) // c went back twice but is one student
+  assert.equal(count(0, 2), 0)
 })

@@ -129,3 +129,27 @@ function classify(studentId: string, steps: JourneyStep[]): Journey {
     status: outOfOrder ? 'out-of-order' : contiguous ? 'in-order' : 'skipped'
   }
 }
+
+export interface PathLink {
+  from: number
+  to: number
+  /** Students who made this move (each counted once, however often they repeated it). */
+  count: number
+}
+
+/** Moves between consecutive stops across students' paths, for the overview diagram. */
+export function pathLinks(journeys: Journey[]): PathLink[] {
+  const counts = new Map<string, PathLink>()
+  for (const j of journeys) {
+    const seen = new Set<string>()
+    for (let i = 1; i < j.path.length; i++) {
+      const key = `${j.path[i - 1]}>${j.path[i]}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const link = counts.get(key) ?? { from: j.path[i - 1], to: j.path[i], count: 0 }
+      link.count++
+      counts.set(key, link)
+    }
+  }
+  return [...counts.values()]
+}
