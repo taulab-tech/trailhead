@@ -34,7 +34,7 @@ when you click it.
   Python with `ddgs`; when running from source it uses your Python (`pip install ddgs`).
 - **LinkedIn matches**: after an import, *Find LinkedIn matches* looks up the new students in
   the background — one search every 8 seconds, pausing itself if the search engine starts
-  refusing. Results wait on the *LinkedIn matches* page: strong matches (exactly one profile
+  refusing. Results wait under *Students → LinkedIn matches*: strong matches (exactly one profile
   that mentions your institution, set in **Settings**) are pre-ticked with title and
   organisation filled in; the rest are yours to pick or skip. Nothing is saved until you
   press *Save*.

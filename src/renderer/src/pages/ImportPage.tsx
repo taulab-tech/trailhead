@@ -314,7 +314,7 @@ export default function ImportPage({
                           ? `Looking up ${lookupsQueued} student${lookupsQueued === 1 ? '' : 's'} in the background.`
                           : 'Those students are already queued or have a position.'}
                       </b>
-                      <p className="text-dim">You can keep working — matches appear on the LinkedIn matches page.</p>
+                      <p className="text-dim">You can keep working — matches appear under Students → LinkedIn matches.</p>
                     </div>
                     <button className="btn btn-sm" onClick={() => onNavigate('lookups')}>
                       Review matches →

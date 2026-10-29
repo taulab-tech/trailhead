@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { DataProvider, useDataVersion } from './DataContext'
 import ImportPage from './pages/ImportPage'
-import StudentsPage from './pages/StudentsPage'
+import StudentsPage, { type StudentsView } from './pages/StudentsPage'
 import EventsPage from './pages/EventsPage'
 import DashboardPage from './pages/DashboardPage'
 import TrailPage from './pages/TrailPage'
 import SettingsPage from './pages/SettingsPage'
-import LookupsPage from './pages/LookupsPage'
 import Logo from './components/Logo'
 
-type Page = 'import' | 'students' | 'events' | 'dashboard' | 'groups' | 'settings' | 'lookups'
+type Page = 'import' | 'students' | 'events' | 'dashboard' | 'groups' | 'settings'
 
 type DbAction = 'export' | 'restore' | 'wipe' | null
 
@@ -35,16 +34,18 @@ function Icon({ d, size = 16 }: { d: string; size?: number }): React.JSX.Element
 function Shell(): React.JSX.Element {
   const [page, setPage] = useState<Page>('dashboard')
   const [settingsFocus, setSettingsFocus] = useState<string | null>(null)
+  const [studentsView, setStudentsView] = useState<StudentsView>('list')
 
-  /** Pages link to each other by name; "duplicates" lives on the Settings page. */
+  /**
+   * Pages link to each other by name. "duplicates" is a section of Settings
+   * and "lookups" (LinkedIn matches) a tab of Students.
+   */
   const navigate = (target: string): void => {
-    if (target === 'duplicates') {
-      setSettingsFocus('duplicates')
-      setPage('settings')
-      return
-    }
-    setSettingsFocus(null)
-    setPage(target as Page)
+    setSettingsFocus(target === 'duplicates' ? 'duplicates' : null)
+    setStudentsView(target === 'lookups' ? 'matches' : 'list')
+    if (target === 'duplicates') setPage('settings')
+    else if (target === 'lookups') setPage('students')
+    else setPage(target as Page)
   }
   const [pendingDuplicates, setPendingDuplicates] = useState(0)
   const [dbAction, setDbAction] = useState<DbAction>(null)
@@ -134,11 +135,6 @@ function Shell(): React.JSX.Element {
       key: 'groups',
       label: 'The Trail',
       icon: <Icon d="M6 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 17V11a4 4 0 0 1 4-4h6M18 7v6a4 4 0 0 1-4 4H8" />
-    },
-    {
-      key: 'lookups',
-      label: 'LinkedIn matches',
-      icon: <Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M16 11l2 2 4-4" />
     }
   ]
 
@@ -163,7 +159,11 @@ function Shell(): React.JSX.Element {
           >
             {item.icon}
             <span className="nav-label">{item.label}</span>
-            {item.key === 'lookups' && lookupsToReview > 0 && <span className="nav-badge">{lookupsToReview}</span>}
+            {item.key === 'students' && lookupsToReview > 0 && (
+              <span className="nav-badge" title={`${lookupsToReview} LinkedIn match${lookupsToReview === 1 ? '' : 'es'} to review`}>
+                {lookupsToReview}
+              </span>
+            )}
           </div>
         ))}
         <div className="sidebar-footer">
@@ -203,11 +203,10 @@ function Shell(): React.JSX.Element {
       <div className="content">
         {page === 'dashboard' && <DashboardPage onNavigate={navigate} />}
         {page === 'import' && <ImportPage onImported={bump} onNavigate={navigate} />}
-        {page === 'students' && <StudentsPage />}
+        {page === 'students' && <StudentsPage key={studentsView} initialView={studentsView} onNavigate={navigate} />}
         {page === 'events' && <EventsPage />}
         {page === 'groups' && <TrailPage />}
         {page === 'settings' && <SettingsPage focus={settingsFocus} onChanged={bump} />}
-        {page === 'lookups' && <LookupsPage onNavigate={navigate} />}
       </div>
     </div>
   )

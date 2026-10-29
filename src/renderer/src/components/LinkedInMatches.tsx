@@ -25,11 +25,11 @@ function minutesLeft(status: LookupStatus): string {
 }
 
 /**
- * Review screen for background LinkedIn lookups. Strong matches are
+ * Review of background LinkedIn lookups, shown as a tab on the Students page. Strong matches are
  * pre-ticked; everything else waits for a person to pick or skip. Nothing is
  * saved to a student until "Save" is pressed.
  */
-export default function LookupsPage({ onNavigate }: { onNavigate: (page: string) => void }): React.JSX.Element {
+export default function LinkedInMatches({ onNavigate }: { onNavigate: (page: string) => void }): React.JSX.Element {
   const { bump } = useDataVersion()
   const [status, setStatus] = useState<LookupStatus | null>(null)
   const [items, setItems] = useState<LookupItem[]>([])
@@ -152,14 +152,9 @@ export default function LookupsPage({ onNavigate }: { onNavigate: (page: string)
 
   return (
     <div className="lookups-page">
-      <div className="page-header">
-        <div>
-          <h1>LinkedIn matches</h1>
-          <p>
-            Possible LinkedIn profiles for students, found in the background. Nothing is saved until you approve it.
-          </p>
-        </div>
-      </div>
+      <p className="lookup-intro">
+        Possible LinkedIn profiles for students, found in the background. Nothing is saved until you approve it.
+      </p>
 
       {!hasInstitution && (
         <div className="card lookup-banner">

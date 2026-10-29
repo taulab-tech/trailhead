@@ -2046,3 +2046,12 @@ input[type='month'] {
 .nav-badge.settings-count {
   font-size: 12px;
 }
+
+.page-tabs {
+  margin: -8px 0 20px;
+}
+
+.lookup-intro {
+  margin: 0 0 16px;
+  color: var(--text-dim);
+}
