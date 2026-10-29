@@ -21,7 +21,7 @@ when you click it.
   the names agree), email match, then an exact normalized name match — but only when exactly one
   existing student has that name and their student IDs don't conflict. Anything less certain (e.g.
   "Chris Elash" vs "Christopher Elash", or two existing students with the same name) is left
-  alone and flagged on the **Duplicates** screen for you to merge or dismiss by hand. Students
+  alone and flagged under **Settings → Possible duplicates** for you to merge or dismiss by hand. Students
   with two different student IDs are never linked or flagged, since an ID belongs to one person.
 - **Students**: searchable master list with every student's contact info, program/college info,
   and full event history. Edit any field, manually add/remove an event, or manually merge two

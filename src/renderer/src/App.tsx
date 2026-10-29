@@ -3,14 +3,13 @@ import { DataProvider, useDataVersion } from './DataContext'
 import ImportPage from './pages/ImportPage'
 import StudentsPage from './pages/StudentsPage'
 import EventsPage from './pages/EventsPage'
-import DuplicatesPage from './pages/DuplicatesPage'
 import DashboardPage from './pages/DashboardPage'
 import TrailPage from './pages/TrailPage'
 import SettingsPage from './pages/SettingsPage'
 import LookupsPage from './pages/LookupsPage'
 import Logo from './components/Logo'
 
-type Page = 'import' | 'students' | 'events' | 'duplicates' | 'dashboard' | 'groups' | 'settings' | 'lookups'
+type Page = 'import' | 'students' | 'events' | 'dashboard' | 'groups' | 'settings' | 'lookups'
 
 type DbAction = 'export' | 'restore' | 'wipe' | null
 
@@ -35,6 +34,18 @@ function Icon({ d, size = 16 }: { d: string; size?: number }): React.JSX.Element
 
 function Shell(): React.JSX.Element {
   const [page, setPage] = useState<Page>('dashboard')
+  const [settingsFocus, setSettingsFocus] = useState<string | null>(null)
+
+  /** Pages link to each other by name; "duplicates" lives on the Settings page. */
+  const navigate = (target: string): void => {
+    if (target === 'duplicates') {
+      setSettingsFocus('duplicates')
+      setPage('settings')
+      return
+    }
+    setSettingsFocus(null)
+    setPage(target as Page)
+  }
   const [pendingDuplicates, setPendingDuplicates] = useState(0)
   const [dbAction, setDbAction] = useState<DbAction>(null)
   const [dbStatus, setDbStatus] = useState<string | null>(null)
@@ -124,7 +135,6 @@ function Shell(): React.JSX.Element {
       label: 'The Trail',
       icon: <Icon d="M6 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 17V11a4 4 0 0 1 4-4h6M18 7v6a4 4 0 0 1-4 4H8" />
     },
-    { key: 'duplicates', label: 'Duplicates', icon: <Icon d="M9 9h11v11H9zM5 15H4V4h11v1" /> },
     {
       key: 'lookups',
       label: 'LinkedIn matches',
@@ -149,24 +159,26 @@ function Shell(): React.JSX.Element {
           <div
             key={item.key}
             className={`nav-item ${page === item.key ? 'active' : ''}`}
-            onClick={() => setPage(item.key)}
+            onClick={() => navigate(item.key)}
           >
             {item.icon}
             <span className="nav-label">{item.label}</span>
-            {item.key === 'duplicates' && pendingDuplicates > 0 && (
-              <span className="nav-badge">{pendingDuplicates}</span>
-            )}
             {item.key === 'lookups' && lookupsToReview > 0 && <span className="nav-badge">{lookupsToReview}</span>}
           </div>
         ))}
         <div className="sidebar-footer">
           <div
             className={`nav-item ${page === 'settings' ? 'active' : ''}`}
-            onClick={() => setPage('settings')}
+            onClick={() => navigate('settings')}
             style={{ marginBottom: 12 }}
           >
             <Icon d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
             <span className="nav-label">Settings</span>
+            {pendingDuplicates > 0 && (
+              <span className="nav-badge" title={`${pendingDuplicates} possible duplicate${pendingDuplicates === 1 ? '' : 's'} to review`}>
+                {pendingDuplicates}
+              </span>
+            )}
           </div>
           <div className="nav-section-label">Data</div>
           <button className="sidebar-action" disabled={dbAction !== null} onClick={exportBackup}>
@@ -189,14 +201,13 @@ function Shell(): React.JSX.Element {
         </div>
       </div>
       <div className="content">
-        {page === 'dashboard' && <DashboardPage onNavigate={setPage as (p: string) => void} />}
-        {page === 'import' && <ImportPage onImported={bump} onNavigate={setPage as (p: string) => void} />}
+        {page === 'dashboard' && <DashboardPage onNavigate={navigate} />}
+        {page === 'import' && <ImportPage onImported={bump} onNavigate={navigate} />}
         {page === 'students' && <StudentsPage />}
         {page === 'events' && <EventsPage />}
         {page === 'groups' && <TrailPage />}
-        {page === 'settings' && <SettingsPage />}
-        {page === 'lookups' && <LookupsPage onNavigate={setPage as (p: string) => void} />}
-        {page === 'duplicates' && <DuplicatesPage onChanged={bump} />}
+        {page === 'settings' && <SettingsPage focus={settingsFocus} onChanged={bump} />}
+        {page === 'lookups' && <LookupsPage onNavigate={navigate} />}
       </div>
     </div>
   )

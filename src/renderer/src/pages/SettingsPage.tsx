@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import DuplicatesReview from '../components/DuplicatesReview'
 
 const splitNames = (raw: string): string[] =>
   raw
@@ -6,11 +7,22 @@ const splitNames = (raw: string): string[] =>
     .map((n) => n.trim())
     .filter(Boolean)
 
-export default function SettingsPage(): React.JSX.Element {
+export default function SettingsPage({
+  focus,
+  onChanged
+}: {
+  /** A section to scroll to on open, e.g. "duplicates". */
+  focus?: string | null
+  onChanged: () => void
+}): React.JSX.Element {
   const [saved, setSaved] = useState<string[]>([])
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (focus) document.getElementById(focus)?.scrollIntoView({ block: 'start' })
+  }, [focus])
 
   useEffect(() => {
     window.api.getSettings().then((s) => {
@@ -34,7 +46,7 @@ export default function SettingsPage(): React.JSX.Element {
       <div className="page-header">
         <div>
           <h1>Settings</h1>
-          <p>Details about your program that Trailhead uses behind the scenes.</p>
+          <p>Details about your program, and housekeeping for your student records.</p>
         </div>
       </div>
 
@@ -73,6 +85,8 @@ export default function SettingsPage(): React.JSX.Element {
           </div>
         </div>
       </div>
+
+      <DuplicatesReview onChanged={onChanged} />
     </div>
   )
 }

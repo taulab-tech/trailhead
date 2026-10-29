@@ -3,7 +3,7 @@ import type { PossibleDuplicate } from '../../../shared/types'
 
 function StudentCard({ s }: { s: PossibleDuplicate['studentA'] }): React.JSX.Element {
   return (
-    <div className="card" style={{ flex: 1 }}>
+    <div className="card" style={{ flex: 1, marginTop: 0 }}>
       <strong>
         {s.firstName} {s.lastName}
       </strong>
@@ -21,7 +21,8 @@ function StudentCard({ s }: { s: PossibleDuplicate['studentA'] }): React.JSX.Ele
   )
 }
 
-export default function DuplicatesPage({ onChanged }: { onChanged: () => void }): React.JSX.Element {
+/** Pairs of student records that may be the same person, to merge or dismiss. Shown on the Settings page. */
+export default function DuplicatesReview({ onChanged }: { onChanged: () => void }): React.JSX.Element {
   const [dupes, setDupes] = useState<PossibleDuplicate[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -53,18 +54,22 @@ export default function DuplicatesPage({ onChanged }: { onChanged: () => void })
   }
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1>Possible duplicates</h1>
-          <p>Flagged when two records have a very similar name but no matching student ID or email — review and merge, or dismiss if they&rsquo;re really two different people.</p>
-        </div>
+    <section id="duplicates" className="settings-section">
+      <div className="settings-section-head">
+        <h2>
+          Possible duplicates
+          {!loading && dupes.length > 0 && <span className="nav-badge settings-count">{dupes.length}</span>}
+        </h2>
+        <p>
+          Flagged when two records have a very similar name but no matching student ID or email — merge them, or
+          dismiss if they&rsquo;re really two different people.
+        </p>
       </div>
 
       {loading ? (
         <div className="empty-state">Loading…</div>
       ) : dupes.length === 0 ? (
-        <div className="empty-state">No possible duplicates to review.</div>
+        <div className="card empty-state" style={{ padding: 28 }}>No possible duplicates to review.</div>
       ) : (
         dupes.map((dup) => (
           <div className="card" key={dup.id}>
@@ -99,6 +104,6 @@ export default function DuplicatesPage({ onChanged }: { onChanged: () => void })
           </div>
         ))
       )}
-    </div>
+    </section>
   )
 }

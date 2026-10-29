@@ -2018,3 +2018,31 @@ input[type='month'] {
   box-shadow: 0 -6px 20px rgba(16, 24, 20, 0.06);
   z-index: 20;
 }
+
+.settings-section {
+  margin-top: 36px;
+  scroll-margin-top: 24px;
+}
+
+.settings-section-head {
+  margin-bottom: 14px;
+}
+
+.settings-section-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.settings-section-head p {
+  margin: 0;
+  color: var(--text-dim);
+  max-width: 760px;
+}
+
+.nav-badge.settings-count {
+  font-size: 12px;
+}
