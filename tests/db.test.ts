@@ -15,7 +15,16 @@ import { listPossibleDuplicates, suggestDuplicate } from '../src/main/db/duplica
 import { listEvents } from '../src/main/db/events'
 import { createCategory, deleteCategory, listCategories } from '../src/main/db/categories'
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
-import { buildPositionQuery, isLinkedInProfile, nameMatches, ownPart, parseLinkedInResult, rankByInstitution } from '../src/main/positionLookup'
+import {
+  buildPositionQuery,
+  configureSearchForTesting,
+  isLinkedInProfile,
+  lookUpPosition,
+  nameMatches,
+  ownPart,
+  parseLinkedInResult,
+  rankByInstitution
+} from '../src/main/positionLookup'
 import { getSettings, setInstitutionNames } from '../src/main/db/settings'
 import { namesSwapped, strongMatch } from '../src/shared/positions'
 import {
@@ -531,7 +540,7 @@ test('background lookups search queued students and save nothing until approved'
     secondsPerSearch: 0,
     search: async (first, last) => {
       searched.push(`${first} ${last}`)
-      return { query: `"${first} ${last}"`, resultCount: 0, candidates: [], broadenedFrom: null, otherNamesHidden: 0 }
+      return { query: `"${first} ${last}"`, resultCount: 0, candidates: [], broadenedFrom: null, otherNamesHidden: 0, attempts: [] }
     }
   })
   try {
@@ -631,4 +640,47 @@ test('a profile with the student’s name in reverse order is spotted, and still
   assert.equal(namesSwapped('Blake M. Marlow', 'Marlow', 'Blake'), true)
   assert.equal(namesSwapped('Lee Lee', 'Lee', 'Lee'), false)
   assert.equal(namesSwapped('Tyrel Kostyk', 'Marlow', 'Blake'), false)
+})
+
+test('when the exact name finds nobody, the reversed name and then a looser search are tried', async () => {
+  const queries: string[] = []
+  // Stand-in search engine: only the reversed, quoted name finds Blake's profile.
+  configureSearchForTesting({
+    minSecondsBetweenSearches: 0,
+    search: async (query) => {
+      queries.push(query)
+      if (query === '"Blake Marlow" site:linkedin.com/in') {
+        return [
+          {
+            title: 'Blake Marlow - Aerospace Engineering Graduate Student | LinkedIn',
+            body: 'Aerospace Engineering Graduate Student · Education: University of Saskatchewan · Location: Saskatoon',
+            href: 'https://ca.linkedin.com/in/blake-marlow'
+          }
+        ]
+      }
+      return [{ title: 'Marlow notes', body: 'Not a profile', href: 'https://example.com/marlow' }]
+    }
+  })
+  try {
+    const result = await lookUpPosition('Marlow', 'Blake')
+    assert.deepEqual(queries, ['"Marlow Blake" site:linkedin.com/in', '"Blake Marlow" site:linkedin.com/in'])
+    assert.equal(result.candidates[0]?.name, 'Blake Marlow')
+    assert.deepEqual(
+      result.attempts.map((a) => a.profilesFound),
+      [0, 1]
+    )
+
+    // Nobody anywhere: every fallback is tried once, then it stops.
+    queries.length = 0
+    const nobody = await lookUpPosition('Zed', 'Nobody')
+    assert.deepEqual(queries, [
+      '"Zed Nobody" site:linkedin.com/in',
+      '"Nobody Zed" site:linkedin.com/in',
+      'Zed Nobody site:linkedin.com/in'
+    ])
+    assert.equal(nobody.candidates.length, 0)
+    assert.equal(nobody.attempts.length, 3)
+  } finally {
+    configureSearchForTesting({})
+  }
 })

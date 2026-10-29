@@ -2,7 +2,7 @@ import { spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { normalizeName } from './normalize'
-import type { PositionCandidate, PositionSearchResult } from '../shared/types'
+import type { PositionCandidate, PositionSearchResult, SearchAttempt } from '../shared/types'
 
 /**
  * Looks a student up on LinkedIn through a DuckDuckGo search, using the
@@ -49,7 +49,7 @@ function pythonCommands(): [string, string[]][] {
   return [...bundled.map((p): [string, string[]] => [p, []]), ...SYSTEM_PYTHONS]
 }
 
-interface RawResult {
+export interface RawResult {
   title: string
   body: string
   href: string
@@ -57,6 +57,17 @@ interface RawResult {
 
 let lastSearchAt = 0
 let queue: Promise<unknown> = Promise.resolve()
+let rawSearch: (query: string) => Promise<RawResult[]> = (query) => runDdgs(query)
+let minSecondsBetweenSearches = MIN_SECONDS_BETWEEN_SEARCHES
+
+/** Tests swap in an offline search engine and drop the spacing; never used by the app. */
+export function configureSearchForTesting(options: {
+  search?: (query: string) => Promise<RawResult[]>
+  minSecondsBetweenSearches?: number
+}): void {
+  rawSearch = options.search ?? ((query) => runDdgs(query))
+  minSecondsBetweenSearches = options.minSecondsBetweenSearches ?? MIN_SECONDS_BETWEEN_SEARCHES
+}
 
 /**
  * `"First Last" site:linkedin.com/in` plus any narrowing words. Words that
@@ -92,19 +103,32 @@ export async function lookUpPosition(
     const kept = r.candidates.filter((c) => nameMatches(c.name, firstName, lastName, c.url))
     return { ...r, candidates: kept, otherNamesHidden: r.candidates.length - kept.length }
   }
-  const query = buildPositionQuery(firstName, lastName, extraTerms)
-  let result = onlyThisPerson(await searchPositions(query))
-  const plainQuery = buildPositionQuery(firstName, lastName)
-  if (result.candidates.length === 0 && query !== plainQuery) {
-    result = { ...onlyThisPerson(await searchPositions(plainQuery)), broadenedFrom: query }
+  // Each fallback runs only while nobody has been found yet:
+  //   1. the exact name (plus any narrowing words), then the exact name alone
+  //   2. the name reversed — rosters often have first and last swapped
+  //   3. no quotes — finds profiles shown as "Marisol O."
+  const queries = [
+    buildPositionQuery(firstName, lastName, extraTerms),
+    buildPositionQuery(firstName, lastName),
+    buildPositionQuery(lastName, firstName),
+    buildLooseQuery(firstName, lastName)
+  ].filter((q, i, all) => all.indexOf(q) === i)
+
+  const attempts: SearchAttempt[] = []
+  let result: PositionSearchResult | null = null
+  for (const query of queries) {
+    const r = onlyThisPerson(await searchPositions(query))
+    attempts.push({ query, resultCount: r.resultCount, profilesFound: r.candidates.length })
+    if (!result || r.candidates.length > 0) result = r
+    if (r.candidates.length > 0) break
   }
-  // An exact-phrase search misses profiles shown as "Marisol O."; try once without quotes.
-  if (result.candidates.length === 0) {
-    const looseQuery = buildLooseQuery(firstName, lastName)
-    const loose = onlyThisPerson(await searchPositions(looseQuery))
-    if (loose.candidates.length > 0) result = { ...loose, broadenedFrom: result.query }
+  const final = result!
+  return {
+    ...final,
+    broadenedFrom: final.query === queries[0] ? null : queries[0],
+    attempts,
+    candidates: rankByInstitution(final.candidates, institutionNames)
   }
-  return { ...result, candidates: rankByInstitution(result.candidates, institutionNames) }
 }
 
 /**
@@ -126,16 +150,17 @@ export function rankByInstitution(candidates: PositionCandidate[], institutionNa
 /** Searches one at a time, at least MIN_SECONDS_BETWEEN_SEARCHES apart. */
 function searchPositions(query: string): Promise<PositionSearchResult> {
   const run = queue.then(async () => {
-    const wait = lastSearchAt + MIN_SECONDS_BETWEEN_SEARCHES * 1000 - Date.now()
+    const wait = lastSearchAt + minSecondsBetweenSearches * 1000 - Date.now()
     if (wait > 0) await new Promise((r) => setTimeout(r, wait))
     try {
-      const raw = await runDdgs(query)
+      const raw = await rawSearch(query)
       return {
         query,
         resultCount: raw.length,
         candidates: raw.filter(isLinkedInProfile).map(parseLinkedInResult),
         broadenedFrom: null,
-        otherNamesHidden: 0
+        otherNamesHidden: 0,
+        attempts: []
       }
     } finally {
       lastSearchAt = Date.now()

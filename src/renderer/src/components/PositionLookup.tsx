@@ -231,22 +231,29 @@ export default function PositionLookup({
       {error && <p className="position-error">{error}</p>}
 
       {lookup && (
-        <p className="position-searched">
-          {lookup.broadenedFrom && (
-            <>
-              Nothing matched <span className="mono">{lookup.broadenedFrom}</span>, so this searched more
-              broadly.{' '}
-            </>
+        <div className="position-searched">
+          {(lookup.attempts?.length ? lookup.attempts : [{ query: lookup.query, resultCount: lookup.resultCount, profilesFound: lookup.candidates.length }]).map(
+            (a, i) => (
+              <div key={a.query} className="position-attempt">
+                <span className="position-attempt-step">{i === 0 ? 'Searched' : 'Then'}</span>
+                <span className="mono">{a.query}</span>
+                <span className={a.profilesFound > 0 ? 'position-attempt-hit' : 'text-faint'}>
+                  {a.resultCount} result{a.resultCount === 1 ? '' : 's'}
+                  {a.profilesFound > 0
+                    ? ` · ${a.profilesFound} with this name`
+                    : a.resultCount > 0
+                      ? ' · none with this name'
+                      : ''}
+                </span>
+              </div>
+            )
           )}
-          Searched <span className="mono">{lookup.query}</span> · {lookup.resultCount} result
-          {lookup.resultCount === 1 ? '' : 's'}
-          {lookup.resultCount > 0 &&
-            lookup.candidates.length === 0 &&
-            !lookup.otherNamesHidden &&
-            ', none of them LinkedIn profiles'}
-          {lookup.otherNamesHidden > 0 &&
-            ` · ${lookup.otherNamesHidden} profile${lookup.otherNamesHidden === 1 ? '' : 's'} for other people hidden`}
-        </p>
+          {lookup.otherNamesHidden > 0 && (
+            <div className="text-faint">
+              {lookup.otherNamesHidden} profile{lookup.otherNamesHidden === 1 ? '' : 's'} for other people hidden
+            </div>
+          )}
+        </div>
       )}
 
       {candidates && candidates.length === 0 && (

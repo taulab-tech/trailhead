@@ -237,6 +237,8 @@ export interface PositionSearchResult {
   broadenedFrom: string | null
   /** LinkedIn profiles dropped because they belong to someone with a different name. */
   otherNamesHidden: number
+  /** Every search tried, in order, until someone was found. */
+  attempts: SearchAttempt[]
 }
 
 export interface AppSettings {
@@ -259,4 +261,11 @@ export interface LookupStatus {
   /** Why the worker stopped early (e.g. the search engine refusing searches), if it did. */
   pausedReason: string | null
   secondsPerSearch: number
+}
+
+export interface SearchAttempt {
+  query: string
+  resultCount: number
+  /** Profiles with the student's name among the results. */
+  profilesFound: number
 }
