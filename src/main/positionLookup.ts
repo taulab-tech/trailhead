@@ -89,7 +89,7 @@ export async function lookUpPosition(
   institutionNames: string[] = []
 ): Promise<PositionSearchResult> {
   const onlyThisPerson = (r: PositionSearchResult): PositionSearchResult => {
-    const kept = r.candidates.filter((c) => nameMatches(c.name, firstName, lastName))
+    const kept = r.candidates.filter((c) => nameMatches(c.name, firstName, lastName, c.url))
     return { ...r, candidates: kept, otherNamesHidden: r.candidates.length - kept.length }
   }
   const query = buildPositionQuery(firstName, lastName, extraTerms)
@@ -97,6 +97,12 @@ export async function lookUpPosition(
   const plainQuery = buildPositionQuery(firstName, lastName)
   if (result.candidates.length === 0 && query !== plainQuery) {
     result = { ...onlyThisPerson(await searchPositions(plainQuery)), broadenedFrom: query }
+  }
+  // An exact-phrase search misses profiles shown as "Marisol O."; try once without quotes.
+  if (result.candidates.length === 0) {
+    const looseQuery = buildLooseQuery(firstName, lastName)
+    const loose = onlyThisPerson(await searchPositions(looseQuery))
+    if (loose.candidates.length > 0) result = { ...loose, broadenedFrom: result.query }
   }
   return { ...result, candidates: rankByInstitution(result.candidates, institutionNames) }
 }
@@ -260,17 +266,35 @@ export function ownPart(text: string): string {
  * name appear, in either order, with a first name allowed to be a short form
  * of the other ("Chris" ↔ "Christopher"). Search engines don't always honour
  * the quoted name and return unrelated people.
+ *
+ * LinkedIn shows some members publicly as "Marisol O."; a last initial is
+ * accepted only when the profile address spells the full last name
+ * (linkedin.com/in/marisolokafor).
  */
-export function nameMatches(candidateName: string, firstName: string, lastName: string): boolean {
+export function nameMatches(candidateName: string, firstName: string, lastName: string, url = ''): boolean {
   const words = (s: string): string[] => normalizeName(s).split(' ').filter(Boolean)
   const have = words(candidateName)
   const last = words(lastName)
   const first = words(firstName)[0]
-  if (last.length === 0 || !last.every((w) => have.includes(w))) return false
-  if (!first) return true
-  return have.some(
-    (w) => w === first || (Math.min(w.length, first.length) >= 3 && (w.startsWith(first) || first.startsWith(w)))
-  )
+  if (last.length === 0) return false
+  const firstOk =
+    !first ||
+    have.some((w) => w === first || (Math.min(w.length, first.length) >= 3 && (w.startsWith(first) || first.startsWith(w))))
+  if (!firstOk) return false
+  if (last.every((w) => have.includes(w))) return true
+
+  const lastJoined = last.join('').replace(/[^a-z]/g, '')
+  const hasInitial = have.some((w) => w.length === 1 && w === lastJoined[0])
+  const slug = decodeURIComponent(url.match(/linkedin\.com\/(?:in|pub)\/([^/?#]+)/i)?.[1] ?? '')
+    .toLowerCase()
+    .replace(/[^a-z]/g, '')
+  return hasInitial && lastJoined.length > 1 && slug.includes(lastJoined)
+}
+
+/** The same search without quotes, for profiles that only show a last initial. */
+export function buildLooseQuery(firstName: string, lastName: string): string {
+  const name = `${firstName} ${lastName}`.replace(/"/g, '').replace(/\s+/g, ' ').trim()
+  return `${name} site:linkedin.com/in`
 }
 
 /** The snippet's first "·" segment, when it reads like a headline rather than a field, bio or boilerplate. */

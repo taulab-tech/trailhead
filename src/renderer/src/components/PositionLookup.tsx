@@ -229,8 +229,8 @@ export default function PositionLookup({
         <p className="position-searched">
           {lookup.broadenedFrom && (
             <>
-              Nothing matched <span className="mono">{lookup.broadenedFrom}</span>, so this searched the name
-              alone.{' '}
+              Nothing matched <span className="mono">{lookup.broadenedFrom}</span>, so this searched more
+              broadly.{' '}
             </>
           )}
           Searched <span className="mono">{lookup.query}</span> · {lookup.resultCount} result

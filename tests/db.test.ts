@@ -607,3 +607,19 @@ test('only profiles with the student’s name count, in either order and allowin
   assert.equal(nameMatches('Nadia Oyelaran', 'Nadia', 'Oyelaran'), true)
   assert.equal(nameMatches('Nadira Oyelaran', 'Nadia', 'Oyelaran'), false)
 })
+
+test('a profile shown with only a last initial matches when its address spells the full name', () => {
+  assert.equal(nameMatches('Marisol O.', 'Marisol', 'Okafor', 'https://ca.linkedin.com/in/marisolokafor'), true)
+  assert.equal(nameMatches('Marisol O.', 'Marisol', 'Okafor', 'https://ca.linkedin.com/in/marisol-okafor-12ab'), true)
+  assert.equal(nameMatches('Marisol O.', 'Marisol', 'Okafor', 'https://ca.linkedin.com/in/marisol-oduya'), false)
+  assert.equal(nameMatches('Marisol O.', 'Marisol', 'Okafor'), false)
+  assert.equal(nameMatches('Lena O.', 'Marisol', 'Okafor', 'https://ca.linkedin.com/in/marisolokafor'), false)
+
+  const r = parseLinkedInResult({
+    title: 'Marisol O. - Resident Engineering Team - E&I Mining | LinkedIn',
+    body: 'Marisol is a dynamic, self-motivated engineering professional with over five years of experience in the mining and consulting ...',
+    href: 'https://ca.linkedin.com/in/marisolokafor'
+  })
+  assert.equal(r.name, 'Marisol O.')
+  assert.equal(r.headline, 'Resident Engineering Team - E&I Mining')
+})
