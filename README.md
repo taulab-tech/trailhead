@@ -32,6 +32,12 @@ when you click it.
   profile link — nothing is saved automatically, since names are often shared. Searches run one
   at a time, a few seconds apart, and only on click. The Windows installer includes its own
   Python with `ddgs`; when running from source it uses your Python (`pip install ddgs`).
+- **LinkedIn matches**: after an import, *Find LinkedIn matches* looks up the new students in
+  the background — one search every 8 seconds, pausing itself if the search engine starts
+  refusing. Results wait on the *LinkedIn matches* page: strong matches (exactly one profile
+  that mentions your institution, set in **Settings**) are pre-ticked with title and
+  organisation filled in; the rest are yours to pick or skip. Nothing is saved until you
+  press *Save*.
 - **Programs & Events**: every imported roster, with attendee lists and the ability to rename,
   re-date, or delete an accidentally-imported sheet.
 - **The Trail**: drag-and-drop the groups (Hackathon, Class, Program, …) into the order students

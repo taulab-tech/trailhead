@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import type { PositionCandidate, PositionSearchResult, Student } from '../../../shared/types'
 import { formatSince } from '../lib/positions'
-import { splitHeadline } from '../../../shared/positions'
+import { suggestedPosition } from '../../../shared/positions'
 
 function safeUrl(url: string | null): string | null {
   return url && /^https:\/\//i.test(url) ? url : null
@@ -17,13 +17,7 @@ interface Draft {
 }
 
 function draftFrom(c: PositionCandidate): Draft {
-  const split = c.headline ? splitHeadline(c.headline) : null
-  return {
-    title: split?.title ?? '',
-    org: split?.org ?? c.experience ?? '',
-    since: '',
-    url: safeUrl(c.url)
-  }
+  return { ...suggestedPosition(c), since: '', url: safeUrl(c.url) }
 }
 
 /**

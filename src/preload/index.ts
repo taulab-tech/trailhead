@@ -16,7 +16,9 @@ import type {
   Student,
   StudentDetail,
   PositionSearchResult,
-  AppSettings
+  AppSettings,
+  LookupItem,
+  LookupStatus
 } from '../shared/types'
 
 const api = {
@@ -77,6 +79,14 @@ const api = {
   getAttendanceDates: (): Promise<AttendanceDate[]> => ipcRenderer.invoke('dashboard:attendanceDates'),
   getFunnelForYear: (year: number | null): Promise<FunnelStats> =>
     ipcRenderer.invoke('dashboard:funnelForYear', year),
+
+  enqueueLookups: (studentIds: string[]): Promise<number> => ipcRenderer.invoke('lookups:enqueue', studentIds),
+  getLookupStatus: (): Promise<LookupStatus> => ipcRenderer.invoke('lookups:status'),
+  listLookups: (): Promise<LookupItem[]> => ipcRenderer.invoke('lookups:list'),
+  startLookups: (): Promise<void> => ipcRenderer.invoke('lookups:start'),
+  stopLookups: (): Promise<void> => ipcRenderer.invoke('lookups:stop'),
+  retryFailedLookups: (): Promise<void> => ipcRenderer.invoke('lookups:retryFailed'),
+  dismissLookups: (studentIds: string[]): Promise<void> => ipcRenderer.invoke('lookups:dismiss', studentIds),
 
   getSettings: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
   setInstitutionNames: (names: string[]): Promise<string[]> =>

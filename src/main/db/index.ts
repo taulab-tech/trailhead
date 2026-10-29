@@ -79,6 +79,14 @@ CREATE TABLE IF NOT EXISTS possible_duplicates (
 );
 CREATE INDEX IF NOT EXISTS idx_possible_duplicates_status ON possible_duplicates(status);
 
+CREATE TABLE IF NOT EXISTS lookup_queue (
+  student_id TEXT PRIMARY KEY REFERENCES students(id) ON DELETE CASCADE,
+  status TEXT NOT NULL,
+  result TEXT,
+  error TEXT,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

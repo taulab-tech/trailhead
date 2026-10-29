@@ -7,9 +7,10 @@ import DuplicatesPage from './pages/DuplicatesPage'
 import DashboardPage from './pages/DashboardPage'
 import TrailPage from './pages/TrailPage'
 import SettingsPage from './pages/SettingsPage'
+import LookupsPage from './pages/LookupsPage'
 import Logo from './components/Logo'
 
-type Page = 'import' | 'students' | 'events' | 'duplicates' | 'dashboard' | 'groups' | 'settings'
+type Page = 'import' | 'students' | 'events' | 'duplicates' | 'dashboard' | 'groups' | 'settings' | 'lookups'
 
 type DbAction = 'export' | 'restore' | 'wipe' | null
 
@@ -41,6 +42,17 @@ function Shell(): React.JSX.Element {
 
   useEffect(() => {
     window.api.listDuplicates('pending').then((rows) => setPendingDuplicates(rows.length))
+  }, [version])
+
+  // Background LinkedIn lookups finish while the user is elsewhere; keep the badge current.
+  const [lookupsToReview, setLookupsToReview] = useState(0)
+  useEffect(() => {
+    const refresh = (): void => {
+      window.api.getLookupStatus().then((s) => setLookupsToReview(s.done + s.failed))
+    }
+    refresh()
+    const timer = setInterval(refresh, 5000)
+    return () => clearInterval(timer)
   }, [version])
 
   const exportBackup = async (): Promise<void> => {
@@ -112,7 +124,12 @@ function Shell(): React.JSX.Element {
       label: 'The Trail',
       icon: <Icon d="M6 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 17V11a4 4 0 0 1 4-4h6M18 7v6a4 4 0 0 1-4 4H8" />
     },
-    { key: 'duplicates', label: 'Duplicates', icon: <Icon d="M9 9h11v11H9zM5 15H4V4h11v1" /> }
+    { key: 'duplicates', label: 'Duplicates', icon: <Icon d="M9 9h11v11H9zM5 15H4V4h11v1" /> },
+    {
+      key: 'lookups',
+      label: 'LinkedIn matches',
+      icon: <Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M16 11l2 2 4-4" />
+    }
   ]
 
   return (
@@ -139,6 +156,7 @@ function Shell(): React.JSX.Element {
             {item.key === 'duplicates' && pendingDuplicates > 0 && (
               <span className="nav-badge">{pendingDuplicates}</span>
             )}
+            {item.key === 'lookups' && lookupsToReview > 0 && <span className="nav-badge">{lookupsToReview}</span>}
           </div>
         ))}
         <div className="sidebar-footer">
@@ -172,11 +190,12 @@ function Shell(): React.JSX.Element {
       </div>
       <div className="content">
         {page === 'dashboard' && <DashboardPage onNavigate={setPage as (p: string) => void} />}
-        {page === 'import' && <ImportPage onImported={bump} />}
+        {page === 'import' && <ImportPage onImported={bump} onNavigate={setPage as (p: string) => void} />}
         {page === 'students' && <StudentsPage />}
         {page === 'events' && <EventsPage />}
         {page === 'groups' && <TrailPage />}
         {page === 'settings' && <SettingsPage />}
+        {page === 'lookups' && <LookupsPage onNavigate={setPage as (p: string) => void} />}
         {page === 'duplicates' && <DuplicatesPage onChanged={bump} />}
       </div>
     </div>

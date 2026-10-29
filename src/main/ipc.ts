@@ -29,6 +29,15 @@ import { createCategory, deleteCategory, listCategories, updateCategory } from '
 import { getAttendanceDates, getDashboardStats, getEventStudentSets, getFunnelStats } from './db/dashboard'
 import { lookUpPosition } from './positionLookup'
 import { getSettings, setInstitutionNames } from './db/settings'
+import {
+  dismissLookups,
+  enqueueLookups,
+  getLookupStatus,
+  listLookups,
+  retryFailedLookups,
+  startLookups,
+  stopLookups
+} from './lookupQueue'
 import type { ImportSheetRequest, NewStudentInput } from '../shared/types'
 
 export function registerIpcHandlers(): void {
@@ -102,6 +111,14 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('funnel:eventStudentSets', () => getEventStudentSets())
   ipcMain.handle('dashboard:attendanceDates', () => getAttendanceDates())
   ipcMain.handle('dashboard:funnelForYear', (_e, year: number | null) => getFunnelStats(year))
+
+  ipcMain.handle('lookups:enqueue', (_e, studentIds: string[]) => enqueueLookups(studentIds))
+  ipcMain.handle('lookups:status', () => getLookupStatus())
+  ipcMain.handle('lookups:list', () => listLookups())
+  ipcMain.handle('lookups:start', () => startLookups())
+  ipcMain.handle('lookups:stop', () => stopLookups())
+  ipcMain.handle('lookups:retryFailed', () => retryFailedLookups())
+  ipcMain.handle('lookups:dismiss', (_e, studentIds: string[]) => dismissLookups(studentIds))
 
   ipcMain.handle('settings:get', () => getSettings())
   ipcMain.handle('settings:setInstitutionNames', (_e, names: string[]) => setInstitutionNames(names))

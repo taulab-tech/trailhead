@@ -17,6 +17,15 @@ import { createCategory, deleteCategory, listCategories } from '../src/main/db/c
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
 import { buildPositionQuery, isLinkedInProfile, parseLinkedInResult, rankByInstitution } from '../src/main/positionLookup'
 import { getSettings, setInstitutionNames } from '../src/main/db/settings'
+import { strongMatch } from '../src/shared/positions'
+import {
+  configureLookupsForTesting,
+  dismissLookups,
+  enqueueLookups,
+  getLookupStatus,
+  listLookups,
+  waitForLookupsIdle
+} from '../src/main/lookupQueue'
 import { updateStudent } from '../src/main/db/students'
 import { migrateLegacyDataDir } from '../src/main/dataDir'
 import { commitImport, harmonizeClasslistEventNames, parseWorkbookForPreview, previewImport } from '../src/main/importer'
@@ -493,4 +502,79 @@ test('positions saved as one line are split into title and organisation on open'
   assert.equal(getStudentById(cameco)?.positionOrg, 'Cameco')
   assert.equal(getStudentById(keensite)?.position, 'CTO of KeenSite')
   assert.equal(getStudentById(keensite)?.positionOrg, null)
+})
+
+test('a strong match needs exactly one titled profile at the institution, with the student’s last name', () => {
+  const c = (name: string, headline: string | null, institutionMatch: string | null) => ({ name, headline, institutionMatch })
+  assert.equal(strongMatch([c('Ann Lee', 'Engineer at X', 'USask'), c('Ann Lee', 'Nurse', null)], 'Lee')?.headline, 'Engineer at X')
+  assert.equal(strongMatch([c('Ann Lee', 'Engineer', 'USask'), c('Ann Lee', 'Nurse', 'USask')], 'Lee'), null)
+  assert.equal(strongMatch([c('Ann Lee', null, 'USask')], 'Lee'), null)
+  assert.equal(strongMatch([c('Ann Park', 'Engineer', 'USask')], 'Lee'), null)
+  assert.equal(strongMatch([c('Ann Lee', 'Engineer', null)], 'Lee'), null)
+})
+
+test('an import reports the ids of the students it created', () => {
+  matchStudent(person('Ann', 'Lee', 'abc123'))
+  const file = writeCsv('ids.csv', ['Student ID,First Name,Last Name', 'abc123,Ann,Lee', 'zzz999,Bo,Park'])
+  const sheet = parseWorkbookForPreview(file).sheets[0]
+  const result = commitImport({
+    filePath: file, fileName: 'ids.csv', sheetName: sheet.sheetName, eventName: 'Ids',
+    eventDate: '2025-01-01', categoryId: null, mapping: sheet.suggestedMapping
+  })
+  const bo = listStudents().find((s) => s.firstName === 'Bo')!
+  assert.deepEqual(result.newStudentIds, [bo.id])
+})
+
+test('background lookups search queued students and save nothing until approved', async () => {
+  const searched: string[] = []
+  configureLookupsForTesting({
+    secondsPerSearch: 0,
+    search: async (first, last) => {
+      searched.push(`${first} ${last}`)
+      return { query: `"${first} ${last}"`, resultCount: 0, candidates: [], broadenedFrom: null }
+    }
+  })
+  try {
+    const ann = createStudent({ firstName: 'Ann', lastName: 'Lee' })
+    const bo = createStudent({ firstName: 'Bo', lastName: 'Park' })
+    const employed = createStudent({ firstName: 'Cy', lastName: 'Ng' })
+    updateStudent(employed, { position: 'Engineer' })
+
+    // Students with a position are skipped; queueing someone twice is a no-op.
+    assert.equal(enqueueLookups([ann, bo, employed, ann]), 2)
+    await waitForLookupsIdle()
+
+    assert.deepEqual(searched.sort(), ['Ann Lee', 'Bo Park'])
+    assert.deepEqual(listLookups().map((i) => i.status), ['done', 'done'])
+    assert.equal(getStudentById(ann)?.position, null)
+
+    dismissLookups([ann, bo])
+    assert.equal(getLookupStatus().done, 0)
+  } finally {
+    configureLookupsForTesting({})
+  }
+})
+
+test('background lookups pause after three failed searches in a row', async () => {
+  let calls = 0
+  configureLookupsForTesting({
+    secondsPerSearch: 0,
+    search: async () => {
+      calls++
+      throw new Error('The search didn’t work (rate limited).')
+    }
+  })
+  try {
+    const ids = ['A', 'B', 'C', 'D', 'E'].map((n) => createStudent({ firstName: n, lastName: 'Test' }))
+    enqueueLookups(ids)
+    await waitForLookupsIdle()
+
+    const status = getLookupStatus()
+    assert.equal(calls, 3)
+    assert.equal(status.failed, 3)
+    assert.equal(status.queued, 2)
+    assert.match(status.pausedReason ?? '', /rate limited/)
+  } finally {
+    configureLookupsForTesting({})
+  }
 })

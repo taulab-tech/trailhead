@@ -621,7 +621,8 @@ function runSheetImport(
       newStudents,
       matchedExisting,
       newDuplicateSuggestions,
-      skippedBlankRows
+      skippedBlankRows,
+      newStudentIds: dryRun ? [] : [...createdByRow.keys()]
     },
     rowOutcomes
   }

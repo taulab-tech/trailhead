@@ -153,6 +153,8 @@ export interface ImportResult {
   matchedExisting: number
   newDuplicateSuggestions: number
   skippedBlankRows: number
+  /** Students this import created, e.g. to look them up on LinkedIn afterwards. */
+  newStudentIds: string[]
 }
 
 export interface NewStudentInput {
@@ -237,4 +239,22 @@ export interface PositionSearchResult {
 
 export interface AppSettings {
   institutionNames: string[]
+}
+
+/** One student's place in the background LinkedIn lookup queue. */
+export interface LookupItem {
+  student: Student
+  status: 'queued' | 'done' | 'failed'
+  result: PositionSearchResult | null
+  error: string | null
+}
+
+export interface LookupStatus {
+  running: boolean
+  queued: number
+  done: number
+  failed: number
+  /** Why the worker stopped early (e.g. the search engine refusing searches), if it did. */
+  pausedReason: string | null
+  secondsPerSearch: number
 }

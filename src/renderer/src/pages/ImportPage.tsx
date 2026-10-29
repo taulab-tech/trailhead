@@ -30,13 +30,20 @@ function sheetKey(filePath: string, sheetName: string): string {
   return `${filePath}::${sheetName}`
 }
 
-export default function ImportPage({ onImported }: { onImported: () => void }): React.JSX.Element {
+export default function ImportPage({
+  onImported,
+  onNavigate
+}: {
+  onImported: () => void
+  onNavigate: (page: string) => void
+}): React.JSX.Element {
   const [dragActive, setDragActive] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sheets, setSheets] = useState<SheetConfig[]>([])
   const [results, setResults] = useState<ImportResult[] | null>(null)
   const [importing, setImporting] = useState(false)
+  const [lookupsQueued, setLookupsQueued] = useState<number | null>(null)
   const [categories, setCategories] = useState<EventCategory[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -188,6 +195,7 @@ export default function ImportPage({ onImported }: { onImported: () => void }): 
         collected.push(result)
       }
       setResults(collected)
+      setLookupsQueued(null)
       setSheets([])
       onImported()
     } catch (err) {
@@ -277,6 +285,45 @@ export default function ImportPage({ onImported }: { onImported: () => void }): 
               })}
             </tbody>
           </table>
+          {(() => {
+            const newIds = results.flatMap((r) => r.newStudentIds)
+            if (newIds.length === 0) return null
+            return (
+              <div className="import-lookup">
+                {lookupsQueued === null ? (
+                  <>
+                    <div>
+                      <b>Find where the new students work?</b>
+                      <p className="text-dim">
+                        Looks up {newIds.length} new student{newIds.length === 1 ? '' : 's'} on LinkedIn in the
+                        background, one every few seconds. You review every match before anything is saved.
+                      </p>
+                    </div>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={async () => setLookupsQueued(await window.api.enqueueLookups(newIds))}
+                    >
+                      Find LinkedIn matches for {newIds.length} new student{newIds.length === 1 ? '' : 's'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <b>
+                        {lookupsQueued > 0
+                          ? `Looking up ${lookupsQueued} student${lookupsQueued === 1 ? '' : 's'} in the background.`
+                          : 'Those students are already queued or have a position.'}
+                      </b>
+                      <p className="text-dim">You can keep working — matches appear on the LinkedIn matches page.</p>
+                    </div>
+                    <button className="btn btn-sm" onClick={() => onNavigate('lookups')}>
+                      Review matches →
+                    </button>
+                  </>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 
