@@ -9,8 +9,11 @@ export interface Student {
   program: string | null
   yearInProgram: string | null
   enrolTerm: 'fall' | 'winter' | null
-  /** Latest job/headline, confirmed by the user from a LinkedIn lookup (or typed in). */
+  /** Job title, confirmed by the user from a LinkedIn lookup (or typed in). */
   position: string | null
+  positionOrg: string | null
+  /** When they started, as "YYYY-MM" (copied from the profile; search results don't carry it). */
+  positionSince: string | null
   positionUrl: string | null
   positionFoundAt: string | null
   notes: string | null
@@ -218,6 +221,8 @@ export interface PositionCandidate {
   location: string | null
   url: string
   snippet: string
+  /** Which configured institution name the profile mentions, if any — likely the right person. */
+  institutionMatch: string | null
 }
 
 export interface PositionSearchResult {
@@ -228,4 +233,8 @@ export interface PositionSearchResult {
   candidates: PositionCandidate[]
   /** Set when the narrowing words found nothing and the name alone was searched instead. */
   broadenedFrom: string | null
+}
+
+export interface AppSettings {
+  institutionNames: string[]
 }

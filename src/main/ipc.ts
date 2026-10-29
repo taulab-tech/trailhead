@@ -28,6 +28,7 @@ import {
 import { createCategory, deleteCategory, listCategories, updateCategory } from './db/categories'
 import { getAttendanceDates, getDashboardStats, getEventStudentSets, getFunnelStats } from './db/dashboard'
 import { lookUpPosition } from './positionLookup'
+import { getSettings, setInstitutionNames } from './db/settings'
 import type { ImportSheetRequest, NewStudentInput } from '../shared/types'
 
 export function registerIpcHandlers(): void {
@@ -64,7 +65,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('students:findPosition', (_e, studentId: string, extraTerms?: string) => {
     const student = getStudentById(studentId)
     if (!student) throw new Error('Student not found')
-    return lookUpPosition(student.firstName, student.lastName, extraTerms)
+    return lookUpPosition(student.firstName, student.lastName, extraTerms, getSettings().institutionNames)
   })
 
   ipcMain.handle('events:list', () => listEvents())
@@ -101,6 +102,9 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('funnel:eventStudentSets', () => getEventStudentSets())
   ipcMain.handle('dashboard:attendanceDates', () => getAttendanceDates())
   ipcMain.handle('dashboard:funnelForYear', (_e, year: number | null) => getFunnelStats(year))
+
+  ipcMain.handle('settings:get', () => getSettings())
+  ipcMain.handle('settings:setInstitutionNames', (_e, names: string[]) => setInstitutionNames(names))
 
   ipcMain.handle('db:backup', async () => {
     const win = BrowserWindow.getFocusedWindow()

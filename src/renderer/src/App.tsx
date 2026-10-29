@@ -6,9 +6,10 @@ import EventsPage from './pages/EventsPage'
 import DuplicatesPage from './pages/DuplicatesPage'
 import DashboardPage from './pages/DashboardPage'
 import TrailPage from './pages/TrailPage'
+import SettingsPage from './pages/SettingsPage'
 import Logo from './components/Logo'
 
-type Page = 'import' | 'students' | 'events' | 'duplicates' | 'dashboard' | 'groups'
+type Page = 'import' | 'students' | 'events' | 'duplicates' | 'dashboard' | 'groups' | 'settings'
 
 type DbAction = 'export' | 'restore' | 'wipe' | null
 
@@ -141,6 +142,14 @@ function Shell(): React.JSX.Element {
           </div>
         ))}
         <div className="sidebar-footer">
+          <div
+            className={`nav-item ${page === 'settings' ? 'active' : ''}`}
+            onClick={() => setPage('settings')}
+            style={{ marginBottom: 12 }}
+          >
+            <Icon d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+            <span className="nav-label">Settings</span>
+          </div>
           <div className="nav-section-label">Data</div>
           <button className="sidebar-action" disabled={dbAction !== null} onClick={exportBackup}>
             <Icon d="M12 3v12M7 10l5 5 5-5M4 21h16" />
@@ -167,6 +176,7 @@ function Shell(): React.JSX.Element {
         {page === 'students' && <StudentsPage />}
         {page === 'events' && <EventsPage />}
         {page === 'groups' && <TrailPage />}
+        {page === 'settings' && <SettingsPage />}
         {page === 'duplicates' && <DuplicatesPage onChanged={bump} />}
       </div>
     </div>

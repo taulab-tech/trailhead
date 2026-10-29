@@ -84,13 +84,32 @@ export function isLinkedInProfile(r: RawResult): boolean {
 export async function lookUpPosition(
   firstName: string,
   lastName: string,
-  extraTerms = ''
+  extraTerms = '',
+  institutionNames: string[] = []
 ): Promise<PositionSearchResult> {
   const query = buildPositionQuery(firstName, lastName, extraTerms)
-  const result = await searchPositions(query)
+  let result = await searchPositions(query)
   const plainQuery = buildPositionQuery(firstName, lastName)
-  if (result.candidates.length > 0 || query === plainQuery) return result
-  return { ...(await searchPositions(plainQuery)), broadenedFrom: query }
+  if (result.candidates.length === 0 && query !== plainQuery) {
+    result = { ...(await searchPositions(plainQuery)), broadenedFrom: query }
+  }
+  return { ...result, candidates: rankByInstitution(result.candidates, institutionNames) }
+}
+
+/**
+ * Marks profiles that mention the configured institution (in their education,
+ * or anywhere in the result) and lists them first. Others stay in the list —
+ * a result only shows part of a profile, so a missing mention proves nothing.
+ */
+export function rankByInstitution(candidates: PositionCandidate[], institutionNames: string[]): PositionCandidate[] {
+  const names = institutionNames.map((n) => n.toLowerCase()).filter(Boolean)
+  const marked = candidates.map((c) => {
+    const inEducation = names.find((n) => c.education?.toLowerCase().includes(n))
+    const anywhere = inEducation ?? names.find((n) => c.snippet.toLowerCase().includes(n))
+    const match = anywhere ? institutionNames.find((n) => n.toLowerCase() === anywhere) ?? null : null
+    return { ...c, institutionMatch: match, rank: inEducation ? 0 : anywhere ? 1 : 2 }
+  })
+  return marked.sort((a, b) => a.rank - b.rank).map(({ rank: _rank, ...c }) => c)
 }
 
 /** Searches one at a time, at least MIN_SECONDS_BETWEEN_SEARCHES apart. */
@@ -213,7 +232,7 @@ export function parseLinkedInResult(r: RawResult): PositionCandidate {
   // labelled fields: "Co-Founder and CTO @ KeenSite · Experience: … · Education: …".
   if (!headline) headline = leadingHeadline(r.body, [experience, education, location])
 
-  return { name, headline, experience, education, location, url: r.href, snippet: r.body }
+  return { name, headline, experience, education, location, url: r.href, snippet: r.body, institutionMatch: null }
 }
 
 /** The snippet's first "·" segment, when it reads like a headline rather than a field, bio or boilerplate. */

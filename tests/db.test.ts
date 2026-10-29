@@ -15,7 +15,8 @@ import { listPossibleDuplicates, suggestDuplicate } from '../src/main/db/duplica
 import { listEvents } from '../src/main/db/events'
 import { createCategory, deleteCategory, listCategories } from '../src/main/db/categories'
 import { detectFuzzyDuplicates, matchStudent } from '../src/main/matching'
-import { buildPositionQuery, isLinkedInProfile, parseLinkedInResult } from '../src/main/positionLookup'
+import { buildPositionQuery, isLinkedInProfile, parseLinkedInResult, rankByInstitution } from '../src/main/positionLookup'
+import { getSettings, setInstitutionNames } from '../src/main/db/settings'
 import { updateStudent } from '../src/main/db/students'
 import { migrateLegacyDataDir } from '../src/main/dataDir'
 import { commitImport, harmonizeClasslistEventNames, parseWorkbookForPreview, previewImport } from '../src/main/importer'
@@ -358,7 +359,8 @@ test('LinkedIn search results are read into name, headline, experience, educatio
       education: 'University of Saskatchewan',
       location: 'Saskatoon',
       url: 'https://ca.linkedin.com/in/nadia-oyelaran-1',
-      snippet: undefined
+      snippet: undefined,
+      institutionMatch: null
     }
   )
   assert.equal(researcher.headline, 'Coadjunct Researcher')
@@ -436,4 +438,59 @@ test('data from the old sigma-attendance folder is copied once, never over exist
   fs.writeFileSync(path.join(current, 'trailhead.db'), 'new-data')
   migrateLegacyDataDir(legacy, current)
   assert.equal(fs.readFileSync(path.join(current, 'trailhead.db'), 'utf8'), 'new-data')
+})
+
+test('institution names are saved trimmed and de-duplicated, and can be cleared', () => {
+  assert.deepEqual(setInstitutionNames([' University of Saskatchewan ', 'USask', 'usask', '']), [
+    'University of Saskatchewan',
+    'USask'
+  ])
+  assert.deepEqual(getSettings().institutionNames, ['University of Saskatchewan', 'USask'])
+  setInstitutionNames([])
+  assert.deepEqual(getSettings().institutionNames, [])
+})
+
+test('profiles that mention the institution are marked and listed first', () => {
+  const candidate = (name: string, education: string | null, snippet = '') => ({
+    name, headline: null, experience: null, education, location: null, url: `https://x/${name}`, snippet, institutionMatch: null
+  })
+  const ranked = rankByInstitution(
+    [
+      candidate('Elsewhere', 'Rutgers University'),
+      candidate('Mentioned', null, 'Research Assistant at USask · Location: Saskatoon'),
+      candidate('Studied', 'University of Saskatchewan')
+    ],
+    ['University of Saskatchewan', 'USask']
+  )
+  assert.deepEqual(ranked.map((c) => c.name), ['Studied', 'Mentioned', 'Elsewhere'])
+  assert.deepEqual(ranked.map((c) => c.institutionMatch), ['University of Saskatchewan', 'USask', null])
+  // With no institution configured, order is untouched and nothing is marked.
+  assert.deepEqual(rankByInstitution(ranked, []).map((c) => c.institutionMatch), [null, null, null])
+})
+
+test('a position keeps its organisation and start month, including through a merge', () => {
+  const keep = createStudent({ firstName: 'Dylan', lastName: 'Haussecker' })
+  const merge = createStudent({ firstName: 'Dylan', lastName: 'H' })
+  updateStudent(merge, { position: 'Co-Founder and CTO', positionOrg: 'KeenSite', positionSince: '2024-05' })
+
+  mergeStudents(keep, merge)
+
+  const kept = getStudentById(keep)
+  assert.equal(kept?.positionOrg, 'KeenSite')
+  assert.equal(kept?.positionSince, '2024-05')
+})
+
+test('positions saved as one line are split into title and organisation on open', () => {
+  const cameco = createStudent({ firstName: 'Carson', lastName: 'Daly' })
+  const keensite = createStudent({ firstName: 'Dylan', lastName: 'Haussecker' })
+  updateStudent(cameco, { position: 'PLC Programmer at Cameco' })
+  updateStudent(keensite, { position: 'CTO of KeenSite' })
+
+  closeDb()
+  getDb()
+
+  assert.equal(getStudentById(cameco)?.position, 'PLC Programmer')
+  assert.equal(getStudentById(cameco)?.positionOrg, 'Cameco')
+  assert.equal(getStudentById(keensite)?.position, 'CTO of KeenSite')
+  assert.equal(getStudentById(keensite)?.positionOrg, null)
 })

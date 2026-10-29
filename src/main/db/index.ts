@@ -4,6 +4,7 @@ import { app } from 'electron'
 import Database from 'better-sqlite3'
 import { normalizeNsid } from '../normalize'
 import { DB_FILE_NAME } from '../dataDir'
+import { splitHeadline } from '../../shared/positions'
 
 let dbInstance: Database.Database | null = null
 
@@ -77,6 +78,11 @@ CREATE TABLE IF NOT EXISTS possible_duplicates (
   UNIQUE(student_a_id, student_b_id)
 );
 CREATE INDEX IF NOT EXISTS idx_possible_duplicates_status ON possible_duplicates(status);
+
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `
 
 // `CREATE TABLE IF NOT EXISTS` only applies to brand-new tables — it won't add
@@ -96,13 +102,32 @@ function migrateSchema(db: Database.Database): void {
   if (!studentColumns.some((c) => c.name === 'enrol_term')) {
     db.exec('ALTER TABLE students ADD COLUMN enrol_term TEXT')
   }
-  for (const column of ['position', 'position_url', 'position_found_at']) {
+  for (const column of ['position', 'position_url', 'position_found_at', 'position_org', 'position_since']) {
     if (!studentColumns.some((c) => c.name === column)) {
       db.exec(`ALTER TABLE students ADD COLUMN ${column} TEXT`)
     }
   }
+  splitCombinedPositions(db)
 
   renormalizeNsids(db)
+}
+
+/**
+ * Positions saved before the separate organisation field held both in one
+ * line ("PLC Programmer at Cameco"); split those where the line says "at"/"@".
+ */
+function splitCombinedPositions(db: Database.Database): void {
+  const rows = db
+    .prepare('SELECT id, position FROM students WHERE position IS NOT NULL AND position_org IS NULL')
+    .all() as { id: string; position: string }[]
+  const update = db.prepare('UPDATE students SET position = ?, position_org = ? WHERE id = ?')
+  const tx = db.transaction(() => {
+    for (const row of rows) {
+      const { title, org } = splitHeadline(row.position)
+      if (org) update.run(title, org, row.id)
+    }
+  })
+  tx()
 }
 
 /**

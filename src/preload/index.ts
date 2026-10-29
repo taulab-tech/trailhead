@@ -15,7 +15,8 @@ import type {
   PossibleDuplicate,
   Student,
   StudentDetail,
-  PositionSearchResult
+  PositionSearchResult,
+  AppSettings
 } from '../shared/types'
 
 const api = {
@@ -76,6 +77,10 @@ const api = {
   getAttendanceDates: (): Promise<AttendanceDate[]> => ipcRenderer.invoke('dashboard:attendanceDates'),
   getFunnelForYear: (year: number | null): Promise<FunnelStats> =>
     ipcRenderer.invoke('dashboard:funnelForYear', year),
+
+  getSettings: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
+  setInstitutionNames: (names: string[]): Promise<string[]> =>
+    ipcRenderer.invoke('settings:setInstitutionNames', names),
 
   backupDatabase: (): Promise<string | null> => ipcRenderer.invoke('db:backup'),
   restoreDatabase: (): Promise<string | null> => ipcRenderer.invoke('db:restore'),

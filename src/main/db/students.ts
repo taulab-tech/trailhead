@@ -17,6 +17,8 @@ interface StudentRow {
   position: string | null
   position_url: string | null
   position_found_at: string | null
+  position_org: string | null
+  position_since: string | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -37,6 +39,8 @@ function rowToStudent(row: StudentRow, emails: string[], phones: string[], atten
     position: row.position ?? null,
     positionUrl: row.position_url ?? null,
     positionFoundAt: row.position_found_at ?? null,
+    positionOrg: row.position_org ?? null,
+    positionSince: row.position_since ?? null,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -231,6 +235,8 @@ export function updateStudent(
     position: string | null
     positionUrl: string | null
     positionFoundAt: string | null
+    positionOrg: string | null
+    positionSince: string | null
     notes: string | null
   }>
 ): void {
@@ -251,6 +257,8 @@ export function updateStudent(
     position: fields.position !== undefined ? fields.position : current.position,
     positionUrl: fields.positionUrl !== undefined ? fields.positionUrl : current.position_url,
     positionFoundAt: fields.positionFoundAt !== undefined ? fields.positionFoundAt : current.position_found_at,
+    positionOrg: fields.positionOrg !== undefined ? fields.positionOrg : current.position_org,
+    positionSince: fields.positionSince !== undefined ? fields.positionSince : current.position_since,
     notes: fields.notes !== undefined ? fields.notes : current.notes,
     updatedAt: new Date().toISOString(),
     id
@@ -259,7 +267,8 @@ export function updateStudent(
     `UPDATE students SET first_name=@firstName, last_name=@lastName, nsid=@nsid, college=@college,
        discipline=@discipline, degree=@degree, program=@program, year_in_program=@yearInProgram,
        enrol_term=@enrolTerm, position=@position, position_url=@positionUrl,
-       position_found_at=@positionFoundAt, notes=@notes, updated_at=@updatedAt WHERE id=@id`
+       position_found_at=@positionFoundAt, position_org=@positionOrg, position_since=@positionSince,
+       notes=@notes, updated_at=@updatedAt WHERE id=@id`
   ).run(merged)
 }
 
@@ -341,7 +350,13 @@ export function mergeStudents(keepId: string, mergeId: string): void {
       enrolTerm: keep.enrolTerm ?? merge.enrolTerm ?? undefined,
       ...(keep.position || !merge.position
         ? {}
-        : { position: merge.position, positionUrl: merge.positionUrl, positionFoundAt: merge.positionFoundAt }),
+        : {
+            position: merge.position,
+            positionUrl: merge.positionUrl,
+            positionFoundAt: merge.positionFoundAt,
+            positionOrg: merge.positionOrg,
+            positionSince: merge.positionSince
+          }),
       notes: [keep.notes, merge.notes].filter(Boolean).join(' | ') || undefined
     })
 
