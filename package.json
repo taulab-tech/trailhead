@@ -7,7 +7,10 @@
   "private": true,
   "scripts": {
     "dev": "electron-vite dev --watch",
+    "dev:web": "vite --config vite.config.web.ts",
     "build": "electron-vite build",
+    "build:web": "vite build --config vite.config.web.ts",
+    "preview:web": "vite preview --config vite.config.web.ts",
     "postinstall": "electron-builder install-app-deps",
     "start": "electron-vite preview",
     "dist": "npm run build && electron-builder",
@@ -19,7 +22,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },
   "dependencies": {
+    "@types/sql.js": "^1.4.11",
     "better-sqlite3": "^11.9.1",
+    "sql.js": "^1.15.2",
     "uuid": "^11.1.0",
     "xlsx": "^0.18.5"
   },

@@ -2,7 +2,9 @@
 
 Attendance and student-pathway tracking for programs and events.
 
-A local, offline desktop app for tracking student attendance across programs and events.
+A local, offline app for tracking student attendance across programs and events. It runs
+two ways from one codebase: as a desktop app, and as a website (see **In a browser** below)
+for machines where installing software isn't allowed.
 Drag in event/attendance spreadsheets, and it builds a master student list — automatically
 linking repeat students across events, with a manual review screen for anything the automatic
 matching couldn't confidently resolve.
@@ -62,6 +64,40 @@ This opens the app in a window. Your data is stored in a local SQLite file in yo
 folder (on Windows: `%APPDATA%\Trailhead\trailhead.db`) — it persists
 between runs automatically.
 
+## In a browser
+
+The same app, built as a static site. Nothing is installed, and nothing is uploaded: the
+database is a file on the user's own computer that the page opens, reads and writes directly.
+
+```bash
+npm run dev:web      # http://localhost:5174
+npm run build:web    # static files in dist-web/
+npm run preview:web  # serve the built files
+```
+
+On Edge and Chrome the File System Access API lets the page save straight back to the
+`trailhead.db` the user picked, so it behaves like the desktop app; the file it opened last is
+offered again next visit. Firefox and Safari have no such API, so there the database is held in
+the browser and downloaded when the user is done. Either way a recovery copy is written to the
+browser's private storage after every change, so a closed tab costs nothing.
+
+It is the same `trailhead.db` either way — a file moves between the desktop and web builds
+untouched.
+
+**What's missing:** the LinkedIn position lookup. It scrapes a search engine through a bundled
+Python, which a web page can't do, and proxying it would put student names on someone else's
+server. The screens check `window.api.capabilities` and hide it rather than failing on click;
+positions can still be typed in by hand, and the desktop build is unchanged.
+
+**Deploying.** Pushing to `master` publishes to GitHub Pages via
+`.github/workflows/deploy-web.yml`. For a custom domain, set a `CUSTOM_DOMAIN` repository
+variable (Settings → Secrets and variables → Actions); the workflow then serves from the root
+and writes the `CNAME`. Without it the app is served from `/<repo>/`.
+
+The page ships a Content-Security-Policy of `connect-src 'self'` and `form-action 'none'`, so
+it cannot contact any host but its own origin — which serves static files and accepts nothing.
+A service worker precaches the build, so after the first visit it runs with the network off.
+
 ## Tests
 
 ```bash
@@ -87,9 +123,18 @@ Output lands in `dist/`. Run the matching `dist:*` script on the OS you want to 
 
 ## Project layout
 
-- `src/main` — Electron main process: SQLite schema/queries (`db/`), spreadsheet parsing
-  (`importer.ts`), and the deterministic student-matching engine (`matching.ts`).
+- `src/main` — SQLite schema/queries (`db/`), spreadsheet parsing (`importer.ts`), and the
+  deterministic student-matching engine (`matching.ts`). Most of it is platform-neutral and
+  compiled into both builds; the Electron- and Node-bound files (`index.ts`, `ipc.ts`,
+  `backup.ts`, `dataDir.ts`, `db/desktop.ts`, `lookupQueue.ts`, `positionLookup.ts`,
+  `workbooksDesktop.ts`) are listed in `tsconfig.web.json`'s `exclude`, which is what stops
+  them reaching the browser bundle.
+- `src/main/db/driver.ts` — the four-method database interface every query is written
+  against. The desktop build plugs in better-sqlite3, the web build plugs in sql.js.
 - `src/preload` — the narrow, typed bridge exposed to the renderer as `window.api`.
-- `src/renderer` — the React UI.
+- `src/renderer` — the React UI, shared by both builds.
+- `src/web` — what stands in for the main process in a browser: the sql.js adapter
+  (`sqljs.ts`), file open/save and recovery (`storage.ts`, `session.ts`), and `window.api`
+  (`api.ts`).
 - `src/shared` — types shared between main and renderer.
 - `tests` — automated tests (`npm test`).

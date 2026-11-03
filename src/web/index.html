@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      The page can load scripts, styles and its WebAssembly from its own
+      origin and from nowhere else. `connect-src 'self'` is what stops it
+      sending anything out: there is no host it is permitted to talk to, so
+      student data cannot leave this machine even if something tried.
+      'wasm-unsafe-eval' is what lets SQLite's WebAssembly compile; it grants
+      no access to the network or the page's origin.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; form-action 'none'; base-uri 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      name="description"
+      content="Attendance and student-pathway tracking. Your data stays on your computer."
+    />
+    <title>Trailhead</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

@@ -2,8 +2,25 @@
   "include": [
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
+    "src/web/**/*",
     "src/shared/**/*",
-    "src/preload/index.d.ts"
+    "src/preload/index.d.ts",
+    // The query layer, the importer and the matching engine have no platform
+    // dependencies and are compiled into the browser build as well.
+    "src/main/**/*"
+  ],
+  // Everything under src/main that genuinely needs Electron or Node. The web
+  // build never imports these; if one of them turns up in the browser bundle,
+  // that's the bug this list is here to catch.
+  "exclude": [
+    "src/main/index.ts",
+    "src/main/ipc.ts",
+    "src/main/backup.ts",
+    "src/main/dataDir.ts",
+    "src/main/db/desktop.ts",
+    "src/main/lookupQueue.ts",
+    "src/main/positionLookup.ts",
+    "src/main/workbooksDesktop.ts"
   ],
   "compilerOptions": {
     "composite": true,

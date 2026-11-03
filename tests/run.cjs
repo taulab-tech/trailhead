@@ -20,7 +20,7 @@ buildSync({
   platform: 'node',
   format: 'cjs',
   target: 'node20',
-  external: ['better-sqlite3', 'electron', 'xlsx'],
+  external: ['better-sqlite3', 'electron', 'xlsx', 'sql.js'],
   logLevel: 'warning'
 })
 
