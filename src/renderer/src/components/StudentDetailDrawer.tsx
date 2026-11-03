@@ -18,6 +18,8 @@ export default function StudentDetailDrawer({
 }): React.JSX.Element {
   const [detail, setDetail] = useState<StudentDetail | null>(null)
   const [form, setForm] = useState<Record<string, string>>({})
+  // Kept out of `form`, which is a bag of text inputs.
+  const [isAlumni, setIsAlumni] = useState(false)
   const [events, setEvents] = useState<EventRecord[]>([])
   const [categories, setCategories] = useState<EventCategory[]>([])
   const [attendanceDates, setAttendanceDates] = useState<AttendanceDate[]>([])
@@ -30,6 +32,7 @@ export default function StudentDetailDrawer({
     window.api.getStudentDetail(studentId).then((d) => {
       setDetail(d)
       if (d) {
+        setIsAlumni(d.isAlumni)
         setForm({
           firstName: d.firstName,
           lastName: d.lastName,
@@ -40,6 +43,7 @@ export default function StudentDetailDrawer({
           program: d.program ?? '',
           yearInProgram: d.yearInProgram ?? '',
           enrolTerm: d.enrolTerm ?? '',
+          cohortYear: d.cohortYear === null ? '' : String(d.cohortYear),
           notes: d.notes ?? ''
         })
       }
@@ -68,7 +72,13 @@ export default function StudentDetailDrawer({
 
   const save = async (): Promise<void> => {
     setSaving(true)
-    await window.api.updateStudent(studentId, form)
+    // A blank cohort year means "not known", not the number zero.
+    const cohortYear = String(form.cohortYear ?? '').trim()
+    await window.api.updateStudent(studentId, {
+      ...form,
+      isAlumni,
+      cohortYear: cohortYear ? Number(cohortYear) : null
+    })
     setSaving(false)
     load()
     onChanged()
@@ -209,6 +219,28 @@ export default function StudentDetailDrawer({
           </div>
         </div>
         <div>
+          <label className="student-alumni">
+            <input
+              type="checkbox"
+              checked={isAlumni}
+              onChange={(e) => setIsAlumni(e.target.checked)}
+            />
+            Alum — has come through the programme
+          </label>
+          {isAlumni && (
+            <div style={{ maxWidth: 160, marginBottom: 12 }}>
+              <label>Cohort year</label>
+              <input
+                type="number"
+                min="1990"
+                max="2100"
+                placeholder="e.g. 2023"
+                value={String(form.cohortYear ?? '')}
+                onChange={(e) => setForm({ ...form, cohortYear: e.target.value })}
+              />
+            </div>
+          )}
+
           <label>Notes</label>
           <textarea
             rows={2}

@@ -48,6 +48,8 @@ export interface PersonRecord {
   degree?: string | null
   program?: string | null
   yearInProgram?: string | null
+  isAlumni?: boolean
+  cohortYear?: number | null
   enrolTerm?: 'fall' | 'winter' | null
 }
 
@@ -220,6 +222,15 @@ export function matchStudent(person: PersonRecord, context?: MatchContext): Matc
       person.enrolTerm,
       context ?? newMatchContext(null, 'unknown')
     )
+    // Being on an alumni list is new information about someone and is never
+    // taken back by a later import; a cohort year only fills a blank.
+    const existing = getStudentById(studentId)
+    const alumniPatch: Record<string, unknown> = {}
+    if (person.isAlumni && existing && !existing.isAlumni) alumniPatch.isAlumni = true
+    if (person.cohortYear && existing && !existing.cohortYear) alumniPatch.cohortYear = person.cohortYear
+    if (Object.keys(alumniPatch).length > 0) {
+      updateStudent(studentId, alumniPatch as Parameters<typeof updateStudent>[1])
+    }
     for (const email of normalizedEmails) addEmail(studentId, email)
     for (const phone of person.phones) addPhone(studentId, phone)
     return { studentId, created: false }
@@ -234,6 +245,8 @@ export function matchStudent(person: PersonRecord, context?: MatchContext): Matc
     degree: person.degree,
     program: person.program,
     yearInProgram: person.yearInProgram,
+    isAlumni: person.isAlumni,
+    cohortYear: person.cohortYear,
     enrolTerm: person.enrolTerm
   })
   if (context?.observedAt) {

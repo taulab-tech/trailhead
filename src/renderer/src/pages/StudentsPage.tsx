@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import type { Student } from '../../../shared/types'
+import { exportStudentsToExcel, type ProgressByStudent } from '../lib/exportStudents'
 import StudentDetailDrawer from '../components/StudentDetailDrawer'
 import LinkedInMatches from '../components/LinkedInMatches'
 
-export type StudentsView = 'list' | 'matches'
+export type StudentsView = 'list' | 'alumni' | 'matches'
 
 type SortKey = 'name' | 'year' | 'events'
 
@@ -38,14 +39,24 @@ export default function StudentsPage({
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortKey>('name')
   const [yearFilter, setYearFilter] = useState<string>('all')
+  const [exporting, setExporting] = useState(false)
+  const [exported, setExported] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const alumniView = view === 'alumni'
+  // The last file saved belongs to the list it came from.
+  useEffect(() => setExported(null), [view, yearFilter, search])
+  const alumniCount = students.filter((s) => s.isAlumni).length
+
   const visible = useMemo(() => {
+    // Students and Alumni are two views of one list, so somebody who came to
+    // a hackathon in 2019 and graduated in 2021 stays one person.
+    const inView = students.filter((s) => s.isAlumni === alumniView)
     const filtered =
       yearFilter === 'all'
-        ? students
-        : students.filter((s) =>
+        ? inView
+        : inView.filter((s) =>
             yearFilter === 'unknown'
               ? s.currentYear.kind === 'unknown'
               : yearFilter === 'graduate'
@@ -55,7 +66,34 @@ export default function StudentsPage({
                   : String(s.currentYear.year) === yearFilter
           )
     return [...filtered].sort((a, b) => compareStudents(a, b, sort))
-  }, [students, sort, yearFilter])
+  }, [students, sort, yearFilter, alumniView])
+
+  /**
+   * Exports exactly what the table is showing. Certificate progress is
+   * fetched per student at this point rather than held for every row all
+   * the time — it is only needed when somebody asks for the file.
+   */
+  const exportVisible = async (): Promise<void> => {
+    setExporting(true)
+    setExported(null)
+    try {
+      const certificates = await window.api.listCertificates()
+      const progress: ProgressByStudent = new Map()
+      for (const student of visible) {
+        progress.set(student.id, await window.api.getStudentCertificates(student.id))
+      }
+      setExported(
+        exportStudentsToExcel({
+          students: visible,
+          kind: alumniView ? 'alumni' : 'students',
+          certificateNames: certificates.map((c) => c.name),
+          progress
+        })
+      )
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const refresh = (): void => {
     setLoading(true)
@@ -85,7 +123,10 @@ export default function StudentsPage({
       <div className="page-header">
         <div>
           <h1>Students</h1>
-          <p>{students.length} student{students.length === 1 ? '' : 's'} on file</p>
+          <p>
+            {students.length - alumniCount} student{students.length - alumniCount === 1 ? '' : 's'} and{' '}
+            {alumniCount} alum{alumniCount === 1 ? '' : 'ni'} on file
+          </p>
         </div>
       </div>
 
@@ -97,6 +138,15 @@ export default function StudentsPage({
           onClick={() => setView('list')}
         >
           All students
+        </button>
+        <button
+          role="tab"
+          aria-selected={view === 'alumni'}
+          className={`sheet-tab ${view === 'alumni' ? 'is-active' : ''}`}
+          onClick={() => setView('alumni')}
+        >
+          Alumni
+          {alumniCount > 0 && <span className="sheet-tab-count">{alumniCount}</span>}
         </button>
         {window.api.capabilities.positionLookup && (
           <button
@@ -123,6 +173,7 @@ export default function StudentsPage({
             onChange={(e) => setSearch(e.target.value)}
             style={{ maxWidth: 360 }}
           />
+          {!alumniView && (
           <select
             aria-label="Filter by year of study"
             value={yearFilter}
@@ -139,12 +190,12 @@ export default function StudentsPage({
             <option value="graduated">Likely graduated</option>
             <option value="unknown">Year unknown</option>
           </select>
+          )}
           <span className="spacer" />
-          <span className="text-faint">
-            {visible.length === students.length
-              ? `${students.length} student${students.length === 1 ? '' : 's'}`
-              : `${visible.length} of ${students.length}`}
-          </span>
+          {exported && <span className="text-faint">Saved {exported}</span>}
+          <button className="btn btn-sm" onClick={exportVisible} disabled={exporting || visible.length === 0}>
+            {exporting ? 'Building…' : `Export ${visible.length} to Excel`}
+          </button>
         </div>
 
         <div className="card" style={{ padding: 0 }}>
@@ -153,7 +204,11 @@ export default function StudentsPage({
           ) : students.length === 0 ? (
             <div className="empty-state">No students match yet. Import a spreadsheet to get started.</div>
           ) : visible.length === 0 ? (
-            <div className="empty-state">No students in that year.</div>
+            <div className="empty-state">
+              {alumniView
+                ? 'No alumni yet. Tick “Everyone on this sheet is an alum” when importing a cohort list, or mark somebody on their record.'
+                : 'No students in that year.'}
+            </div>
           ) : (
             <table>
               <thead>
@@ -166,9 +221,13 @@ export default function StudentsPage({
                   <th>Contact</th>
                   <th>College / Discipline / Degree</th>
                   <th>
-                    <button className="col-sort" onClick={() => setSort('year')} aria-pressed={sort === 'year'}>
-                      Year{sort === 'year' && <span className="col-sort-mark"> ↓</span>}
-                    </button>
+                    {alumniView ? (
+                      'Cohort'
+                    ) : (
+                      <button className="col-sort" onClick={() => setSort('year')} aria-pressed={sort === 'year'}>
+                        Year{sort === 'year' && <span className="col-sort-mark"> ↓</span>}
+                      </button>
+                    )}
                   </th>
                   <th>
                     <button className="col-sort" onClick={() => setSort('events')} aria-pressed={sort === 'events'}>
@@ -194,11 +253,19 @@ export default function StudentsPage({
                       {[s.college, s.discipline, s.degree].filter(Boolean).join(' · ') || '—'}
                     </td>
                     <td>
-                      <span className={`year-label kind-${s.currentYear.kind}`}>{s.currentYear.label}</span>
-                      {s.currentYear.basis && !s.currentYear.current && (
-                        <div className="text-faint year-basis" title={`From ${s.currentYear.basis}`}>
-                          est. from {s.currentYear.basis}
-                        </div>
+                      {alumniView ? (
+                        <span className="year-label">{s.cohortYear ?? '—'}</span>
+                      ) : (
+                        <>
+                          <span className={`year-label kind-${s.currentYear.kind}`}>
+                            {s.currentYear.label}
+                          </span>
+                          {s.currentYear.basis && !s.currentYear.current && (
+                            <div className="text-faint year-basis" title={`From ${s.currentYear.basis}`}>
+                              est. from {s.currentYear.basis}
+                            </div>
+                          )}
+                        </>
                       )}
                     </td>
                     <td>

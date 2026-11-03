@@ -45,6 +45,7 @@ function detectMapping(headers: string[], rows: Record<string, string>[] = []): 
     else if (h.includes('college')) field = 'college'
     else if (h.includes('degree')) field = 'degree'
     else if (h.includes('discipline') || h.includes('major')) field = 'discipline'
+    else if (h.includes('cohort')) field = 'cohortYear'
     else if (h.includes('program')) field = 'program'
 
     mapping[header] = field
@@ -517,6 +518,7 @@ function runSheetImport(
   const degreeCol = headers.find((h) => request.mapping[h] === 'degree')
   const programCol = headers.find((h) => request.mapping[h] === 'program')
   const yearCol = headers.find((h) => request.mapping[h] === 'yearInProgram')
+  const cohortCol = headers.find((h) => request.mapping[h] === 'cohortYear')
   const ignoredColumns = headers.filter((h) => request.mapping[h] === 'ignore')
 
   // Rosters with a mapped year column often get exported as one sheet
@@ -640,7 +642,16 @@ function runSheetImport(
         // Registrar exports write "Not Available" where a student's year
         // isn't known; that must not land on the record as if it were one.
         yearInProgram: yearCol ? meaningfulValue(row[yearCol]) : null,
-        enrolTerm: yearCol ? parseEnrolTerm(row[yearCol]) : null
+        enrolTerm: yearCol ? parseEnrolTerm(row[yearCol]) : null,
+        isAlumni: request.markAsAlumni === true,
+        // On a cohort list the year column is the year they came through,
+        // not the year of study they were in — the alumni tracker keeps it
+        // in a column with no heading at all, next to the row numbers.
+        cohortYear: cohortCol
+          ? parseEnrolYear(row[cohortCol])
+          : request.markAsAlumni && yearCol
+            ? parseEnrolYear(row[yearCol])
+            : null
       }, context)
 
       const { eventId, eventName } = eventIdForRow(yearCol ? row[yearCol] : null)

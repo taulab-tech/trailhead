@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS students (
   degree TEXT,
   program TEXT,
   year_in_program TEXT,
+  -- Marked as alumni, and the year they came through, which is how the
+  -- cohort trackers are organised.
+  is_alumni INTEGER NOT NULL DEFAULT 0,
+  cohort_year INTEGER,
   notes TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -234,6 +238,15 @@ function migrateSchema(db: SqlDriver): void {
     if (!studentColumns.some((c) => c.name === column)) {
       db.exec(`ALTER TABLE students ADD COLUMN ${column} TEXT`)
     }
+  }
+  // Alumni are the same people, marked. A separate table would break
+  // matching — the point is seeing that a 2021 alum first turned up at a
+  // hackathon in 2019.
+  if (!studentColumns.some((c) => c.name === 'is_alumni')) {
+    db.exec('ALTER TABLE students ADD COLUMN is_alumni INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!studentColumns.some((c) => c.name === 'cohort_year')) {
+    db.exec('ALTER TABLE students ADD COLUMN cohort_year INTEGER')
   }
   const courseColumns = db.prepare('PRAGMA table_info(student_courses)').all() as { name: string }[]
   if (courseColumns.length > 0 && !courseColumns.some((c) => c.name === 'class_year')) {

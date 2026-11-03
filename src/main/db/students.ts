@@ -16,6 +16,8 @@ interface StudentRow {
   degree: string | null
   program: string | null
   year_in_program: string | null
+  is_alumni: number
+  cohort_year: number | null
   enrol_term: string | null
   position: string | null
   position_url: string | null
@@ -114,6 +116,8 @@ function rowToStudent(
     degree: row.degree,
     program: row.program,
     yearInProgram: row.year_in_program,
+    isAlumni: row.is_alumni === 1,
+    cohortYear: row.cohort_year,
     enrolTerm: row.enrol_term === 'fall' || row.enrol_term === 'winter' ? row.enrol_term : null,
     position: row.position ?? null,
     positionUrl: row.position_url ?? null,
@@ -312,8 +316,10 @@ export function createStudent(input: NewStudentInput): string {
   const now = new Date().toISOString()
   db.prepare(
     `INSERT INTO students
-      (id, first_name, last_name, nsid, college, discipline, degree, program, year_in_program, enrol_term, notes, created_at, updated_at)
-     VALUES (@id, @firstName, @lastName, @nsid, @college, @discipline, @degree, @program, @yearInProgram, @enrolTerm, @notes, @createdAt, @updatedAt)`
+      (id, first_name, last_name, nsid, college, discipline, degree, program, year_in_program,
+       is_alumni, cohort_year, enrol_term, notes, created_at, updated_at)
+     VALUES (@id, @firstName, @lastName, @nsid, @college, @discipline, @degree, @program, @yearInProgram,
+       @isAlumni, @cohortYear, @enrolTerm, @notes, @createdAt, @updatedAt)`
   ).run({
     id,
     firstName: input.firstName,
@@ -324,6 +330,8 @@ export function createStudent(input: NewStudentInput): string {
     degree: input.degree ?? null,
     program: input.program ?? null,
     yearInProgram: input.yearInProgram ?? null,
+    isAlumni: input.isAlumni ? 1 : 0,
+    cohortYear: input.cohortYear ?? null,
     enrolTerm: input.enrolTerm ?? null,
     notes: null,
     createdAt: now,
@@ -345,6 +353,8 @@ export function updateStudent(
     degree: string | null
     program: string | null
     yearInProgram: string | null
+    isAlumni: boolean
+    cohortYear: number | null
     enrolTerm: 'fall' | 'winter' | null
     position: string | null
     positionUrl: string | null
@@ -367,6 +377,8 @@ export function updateStudent(
     program: fields.program !== undefined ? fields.program : current.program,
     yearInProgram:
       fields.yearInProgram !== undefined ? fields.yearInProgram : current.year_in_program,
+    isAlumni: fields.isAlumni !== undefined ? (fields.isAlumni ? 1 : 0) : current.is_alumni,
+    cohortYear: fields.cohortYear !== undefined ? fields.cohortYear : current.cohort_year,
     enrolTerm: fields.enrolTerm !== undefined ? fields.enrolTerm : current.enrol_term,
     position: fields.position !== undefined ? fields.position : current.position,
     positionUrl: fields.positionUrl !== undefined ? fields.positionUrl : current.position_url,
@@ -380,6 +392,7 @@ export function updateStudent(
   db.prepare(
     `UPDATE students SET first_name=@firstName, last_name=@lastName, nsid=@nsid, college=@college,
        discipline=@discipline, degree=@degree, program=@program, year_in_program=@yearInProgram,
+       is_alumni=@isAlumni, cohort_year=@cohortYear,
        enrol_term=@enrolTerm, position=@position, position_url=@positionUrl,
        position_found_at=@positionFoundAt, position_org=@positionOrg, position_since=@positionSince,
        notes=@notes, updated_at=@updatedAt WHERE id=@id`

@@ -24,6 +24,7 @@ interface SheetConfig {
   view: 'students' | 'mapping' | null
   rows: ReviewRow[]
   rejectedUpdates: string[]
+  markAsAlumni: boolean
   removed: ReviewRow[]
 }
 
@@ -70,6 +71,7 @@ export default function ImportPage({
           view: 'students' as const,
           rows: sheet.rows.map((values, id) => ({ id, values })),
           rejectedUpdates: [],
+          markAsAlumni: false,
           removed: []
         }))
       setSheets((prev) => {
@@ -161,6 +163,7 @@ export default function ImportPage({
     fileName: s.fileName,
     sheetName: s.sheet.sheetName,
     eventName: s.eventName.trim() || s.sheet.suggestedEventName,
+    markAsAlumni: s.markAsAlumni,
     eventDate: s.eventDate.trim() || null,
     categoryId: s.categoryId,
     mapping: s.mapping
@@ -412,6 +415,18 @@ export default function ImportPage({
                       />
                     </div>
                   </div>
+                  <label className="sheet-alumni">
+                    <input
+                      type="checkbox"
+                      checked={s.markAsAlumni}
+                      onChange={(e) => updateSheet(s.key, { markAsAlumni: e.target.checked })}
+                    />
+                    Everyone on this sheet is an alum
+                    <span className="text-faint">
+                      — for a cohort list rather than an event roster
+                    </span>
+                  </label>
+
                   {s.sheet.yearSplitPreview &&
                     s.mapping[s.sheet.yearSplitPreview.column] === 'yearInProgram' && (
                       <p className="text-dim" style={{ margin: '8px 0', fontSize: 12.5 }}>

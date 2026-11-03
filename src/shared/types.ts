@@ -8,6 +8,10 @@ export interface Student {
   degree: string | null
   program: string | null
   yearInProgram: string | null
+  /** Marked as having come through the programme, rather than still in it. */
+  isAlumni: boolean
+  /** The year they came through, as the cohort trackers record it. */
+  cohortYear: number | null
   enrolTerm: 'fall' | 'winter' | null
   /** Job title, confirmed by the user from a LinkedIn lookup (or typed in). */
   position: string | null
@@ -150,6 +154,7 @@ export type MappableField =
   | 'degree'
   | 'program'
   | 'yearInProgram'
+  | 'cohortYear'
   | 'ignore'
 
 export type ColumnMapping = Record<string, MappableField>
@@ -162,6 +167,8 @@ export interface ImportSheetRequest {
   eventDate: string | null
   categoryId: string | null
   mapping: ColumnMapping
+  /** Mark everyone on this sheet as alumni — for importing a cohort list. */
+  markAsAlumni?: boolean
   /** The rows to import, as reviewed/edited by the user. Omitted = read the sheet from the file. */
   rows?: Record<string, string>[]
   /**
@@ -221,6 +228,8 @@ export interface NewStudentInput {
   degree?: string | null
   program?: string | null
   yearInProgram?: string | null
+  isAlumni?: boolean
+  cohortYear?: number | null
   enrolTerm?: 'fall' | 'winter' | null
   email?: string | null
   phone?: string | null

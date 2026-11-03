@@ -12,6 +12,7 @@ export const FIELD_LABELS: Record<MappableField, string> = {
   degree: 'Degree',
   program: 'Program',
   yearInProgram: 'Year in program / enroll year',
+  cohortYear: 'Cohort year',
   ignore: '— Not used —'
 }
 
@@ -27,5 +28,6 @@ export const FIELD_OPTIONS: MappableField[] = [
   'degree',
   'program',
   'yearInProgram',
+  'cohortYear',
   'ignore'
 ]
