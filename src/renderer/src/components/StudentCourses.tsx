@@ -28,15 +28,20 @@ function termLabel(course: StudentCourse): string {
 export default function StudentCourses({ courses }: { courses: StudentCourse[] }): React.JSX.Element | null {
   if (courses.length === 0) return null
 
-  const earned = courses
-    .filter((c) => c.status === 'completed')
-    .reduce((total, c) => total + (c.creditUnits ?? 0), 0)
+  const completed = courses.filter((c) => c.status === 'completed').length
 
   return (
     <>
+      {/*
+        Deliberately a count, not a credit-unit total. The units here are the
+        registrar's per-term figures, which differ from the catalogue units a
+        certificate counts in — GE 495 is 3.0 on a class list and 6 in the
+        calendar — and two different "CU earned" numbers on one screen would
+        only ever read as a bug.
+      */}
       <div className="section-title">
         Courses ({courses.length}
-        {earned > 0 ? ` · ${earned} CU earned` : ''})
+        {completed > 0 && completed < courses.length ? ` · ${completed} completed` : ''})
       </div>
       <table className="course-table">
         <tbody>

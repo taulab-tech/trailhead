@@ -3,12 +3,13 @@ import { DataProvider, useDataVersion } from './DataContext'
 import ImportPage from './pages/ImportPage'
 import StudentsPage, { type StudentsView } from './pages/StudentsPage'
 import EventsPage from './pages/EventsPage'
+import CertificatesPage from './pages/CertificatesPage'
 import DashboardPage from './pages/DashboardPage'
 import TrailPage from './pages/TrailPage'
 import SettingsPage from './pages/SettingsPage'
 import Logo from './components/Logo'
 
-type Page = 'import' | 'students' | 'events' | 'dashboard' | 'groups' | 'settings'
+type Page = 'import' | 'students' | 'events' | 'certificates' | 'dashboard' | 'groups' | 'settings'
 
 type DbAction = 'export' | 'restore' | 'wipe' | null
 
@@ -132,6 +133,11 @@ function Shell(): React.JSX.Element {
     },
     { key: 'events', label: 'Programs & Events', icon: <Icon d="M3 5h18v16H3zM16 3v4M8 3v4M3 10h18" /> },
     {
+      key: 'certificates',
+      label: 'Certificates',
+      icon: <Icon d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12M8.5 14 7 22l5-3 5 3-1.5-8" />
+    },
+    {
       key: 'groups',
       label: 'The Trail',
       icon: <Icon d="M6 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 17V11a4 4 0 0 1 4-4h6M18 7v6a4 4 0 0 1-4 4H8" />
@@ -207,6 +213,7 @@ function Shell(): React.JSX.Element {
         {page === 'import' && <ImportPage onImported={bump} onNavigate={navigate} />}
         {page === 'students' && <StudentsPage key={studentsView} initialView={studentsView} onNavigate={navigate} />}
         {page === 'events' && <EventsPage />}
+        {page === 'certificates' && <CertificatesPage />}
         {page === 'groups' && <TrailPage />}
         {page === 'settings' && <SettingsPage focus={settingsFocus} onChanged={bump} />}
       </div>

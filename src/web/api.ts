@@ -19,6 +19,23 @@ import {
   getFunnelStats
 } from '../main/db/dashboard'
 import { getSettings, setInstitutionNames } from '../main/db/settings'
+import {
+  addRequirement,
+  addSubstitution,
+  certificateRoster,
+  createCertificate,
+  createGroup,
+  deleteCertificate,
+  deleteGroup,
+  getCertificate,
+  listCertificates,
+  removeRequirement,
+  removeSubstitution,
+  setStudentCertificate,
+  studentCertificates,
+  updateCertificate,
+  updateGroup
+} from '../main/db/certificates' 
 import { commitImport, parseWorkbookForPreview, previewImport } from '../main/importer'
 import type {
   AppCapabilities,
@@ -141,6 +158,64 @@ export const webApi = {
   stopLookups: async (): Promise<void> => {},
   retryFailedLookups: async (): Promise<void> => {},
   dismissLookups: async (_studentIds: string[]): Promise<void> => {},
+
+  listCertificates: async () => listCertificates(),
+  getCertificate: async (id: string) => getCertificate(id),
+  getCertificateRoster: async (id: string) => certificateRoster(id),
+  createCertificate: async (name: string, totalUnits: number | null, notes: string | null) => {
+    const id = createCertificate(name, totalUnits, notes)
+    await save()
+    return id
+  },
+  updateCertificate: async (id: string, fields: Parameters<typeof updateCertificate>[1]) => {
+    updateCertificate(id, fields)
+    await save()
+  },
+  deleteCertificate: async (id: string) => {
+    deleteCertificate(id)
+    await save()
+  },
+  addCertificateGroup: async (certificateId: string, input: Parameters<typeof createGroup>[1]) => {
+    const id = createGroup(certificateId, input)
+    await save()
+    return id
+  },
+  updateCertificateGroup: async (id: string, fields: Parameters<typeof updateGroup>[1]) => {
+    updateGroup(id, fields)
+    await save()
+  },
+  deleteCertificateGroup: async (id: string) => {
+    deleteGroup(id)
+    await save()
+  },
+  addCertificateRequirement: async (groupId: string, courseCode: string, creditUnits: number) => {
+    const id = addRequirement(groupId, courseCode, creditUnits)
+    await save()
+    return id
+  },
+  removeCertificateRequirement: async (id: string) => {
+    removeRequirement(id)
+    await save()
+  },
+  addCertificateSubstitution: async (
+    certificateId: string,
+    replacesCode: string,
+    acceptedCode: string,
+    alsoRequiresCode: string | null
+  ) => {
+    addSubstitution(certificateId, replacesCode, acceptedCode, alsoRequiresCode)
+    await save()
+  },
+  removeCertificateSubstitution: async (id: string) => {
+    removeSubstitution(id)
+    await save()
+  },
+
+  getStudentCertificates: async (studentId: string) => studentCertificates(studentId),
+  setStudentCertificate: async (studentId: string, certificateId: string, declared: boolean) => {
+    setStudentCertificate(studentId, certificateId, declared)
+    await save()
+  },
 
   getSettings: async () => getSettings(),
   setInstitutionNames: async (names: string[]) => setInstitutionNames(names),

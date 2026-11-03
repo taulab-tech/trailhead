@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import type { AttendanceDate, EventCategory, EventRecord, Student, StudentDetail } from '../../../shared/types'
 import PositionLookup from './PositionLookup'
+import StudentCertificates from './StudentCertificates'
 import StudentCourses from './StudentCourses'
 import JourneyTimeline from './JourneyTimeline'
 import { buildJourneys, trailStages } from '../../../shared/journeys'
@@ -229,6 +230,8 @@ export default function StudentDetailDrawer({
             onChanged()
           }}
         />
+
+        <StudentCertificates studentId={detail.id} onChanged={onChanged} />
 
         <StudentCourses courses={detail.courses} />
 

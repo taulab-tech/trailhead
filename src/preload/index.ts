@@ -18,6 +18,11 @@ import type {
   PositionSearchResult,
   AppSettings,
   AppCapabilities,
+  Certificate,
+  CertificateDefinition,
+  CertificateRosterEntry,
+  GroupKind,
+  StudentCertificate,
   LookupItem,
   LookupStatus
 } from '../shared/types'
@@ -90,6 +95,47 @@ const api = {
   stopLookups: (): Promise<void> => ipcRenderer.invoke('lookups:stop'),
   retryFailedLookups: (): Promise<void> => ipcRenderer.invoke('lookups:retryFailed'),
   dismissLookups: (studentIds: string[]): Promise<void> => ipcRenderer.invoke('lookups:dismiss', studentIds),
+
+  listCertificates: (): Promise<Certificate[]> => ipcRenderer.invoke('certificates:list'),
+  getCertificate: (id: string): Promise<CertificateDefinition | null> =>
+    ipcRenderer.invoke('certificates:get', id),
+  getCertificateRoster: (id: string): Promise<CertificateRosterEntry[]> =>
+    ipcRenderer.invoke('certificates:roster', id),
+  createCertificate: (name: string, totalUnits: number | null, notes: string | null): Promise<string> =>
+    ipcRenderer.invoke('certificates:create', name, totalUnits, notes),
+  updateCertificate: (
+    id: string,
+    fields: { name?: string; totalUnits?: number | null; notes?: string | null }
+  ): Promise<void> => ipcRenderer.invoke('certificates:update', id, fields),
+  deleteCertificate: (id: string): Promise<void> => ipcRenderer.invoke('certificates:delete', id),
+  addCertificateGroup: (
+    certificateId: string,
+    input: { name: string; kind: GroupKind; minUnits: number | null; parentId?: string | null }
+  ): Promise<string> => ipcRenderer.invoke('certificates:addGroup', certificateId, input),
+  updateCertificateGroup: (
+    id: string,
+    fields: { name?: string; minUnits?: number | null }
+  ): Promise<void> => ipcRenderer.invoke('certificates:updateGroup', id, fields),
+  deleteCertificateGroup: (id: string): Promise<void> =>
+    ipcRenderer.invoke('certificates:deleteGroup', id),
+  addCertificateRequirement: (groupId: string, courseCode: string, creditUnits: number): Promise<string> =>
+    ipcRenderer.invoke('certificates:addRequirement', groupId, courseCode, creditUnits),
+  removeCertificateRequirement: (id: string): Promise<void> =>
+    ipcRenderer.invoke('certificates:removeRequirement', id),
+  addCertificateSubstitution: (
+    certificateId: string,
+    replacesCode: string,
+    acceptedCode: string,
+    alsoRequiresCode: string | null
+  ): Promise<void> =>
+    ipcRenderer.invoke('certificates:addSubstitution', certificateId, replacesCode, acceptedCode, alsoRequiresCode),
+  removeCertificateSubstitution: (id: string): Promise<void> =>
+    ipcRenderer.invoke('certificates:removeSubstitution', id),
+
+  getStudentCertificates: (studentId: string): Promise<StudentCertificate[]> =>
+    ipcRenderer.invoke('students:certificates', studentId),
+  setStudentCertificate: (studentId: string, certificateId: string, declared: boolean): Promise<void> =>
+    ipcRenderer.invoke('students:setCertificate', studentId, certificateId, declared),
 
   getSettings: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
   setInstitutionNames: (names: string[]): Promise<string[]> =>

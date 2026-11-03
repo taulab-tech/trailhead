@@ -1,4 +1,5 @@
 import { initializeDatabase, looksLikeTrailheadDb, setDbDriver } from '../main/db'
+import { seedCertificatesIfEmpty } from '../main/db/certificates'
 import { setWorkbookReader } from '../main/workbooks'
 import { openWebDatabase, type WebDatabase } from './sqljs'
 import { browserWorkbookReader, forgetWorkbooks } from './workbooks'
@@ -137,6 +138,7 @@ async function start(bytes: Uint8Array | undefined, fileName: string, fileHandle
   setDbDriver(opened)
   setWorkbookReader(browserWorkbookReader)
   initializeDatabase(opened)
+  seedCertificatesIfEmpty()
   opened.watch(onDatabaseChanged)
 
   db = opened

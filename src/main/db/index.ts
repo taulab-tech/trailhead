@@ -109,6 +109,69 @@ CREATE TABLE IF NOT EXISTS student_courses (
 );
 CREATE INDEX IF NOT EXISTS idx_student_courses_student ON student_courses(student_id);
 CREATE INDEX IF NOT EXISTS idx_student_courses_code ON student_courses(course_code);
+
+CREATE TABLE IF NOT EXISTS certificates (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  total_units REAL,
+  notes TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+-- A certificate is a set of groups: one or more "required" groups whose every
+-- course must be completed, and "elective" groups that need a number of
+-- credit units from a list. A group can sit inside another to express a rule
+-- like "9 units of electives, at least 3 of which must be COMM" — the COMM
+-- courses are a child group with its own minimum.
+CREATE TABLE IF NOT EXISTS certificate_groups (
+  id TEXT PRIMARY KEY,
+  certificate_id TEXT NOT NULL REFERENCES certificates(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  min_units REAL,
+  parent_id TEXT REFERENCES certificate_groups(id) ON DELETE CASCADE,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_certificate_groups_cert ON certificate_groups(certificate_id);
+
+CREATE TABLE IF NOT EXISTS certificate_requirements (
+  id TEXT PRIMARY KEY,
+  certificate_id TEXT NOT NULL REFERENCES certificates(id) ON DELETE CASCADE,
+  group_id TEXT NOT NULL REFERENCES certificate_groups(id) ON DELETE CASCADE,
+  course_code TEXT NOT NULL,
+  -- The units this course is worth towards the certificate, which is the
+  -- catalogue's figure. It is deliberately not taken from the class list: a
+  -- full-year course like GE 495.6 is exported once per term at 3.0 units,
+  -- and counting that would leave every capstone student short.
+  credit_units REAL NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(group_id, course_code)
+);
+CREATE INDEX IF NOT EXISTS idx_certificate_requirements_cert ON certificate_requirements(certificate_id);
+
+-- "You may count CHE 495.6 in place of GE 495.6, provided you also complete
+-- GE 496.3." Both halves are checked before the substitution is allowed.
+CREATE TABLE IF NOT EXISTS certificate_substitutions (
+  id TEXT PRIMARY KEY,
+  certificate_id TEXT NOT NULL REFERENCES certificates(id) ON DELETE CASCADE,
+  replaces_code TEXT NOT NULL,
+  accepted_code TEXT NOT NULL,
+  also_requires_code TEXT,
+  UNIQUE(certificate_id, replaces_code, accepted_code)
+);
+
+-- Who has said they are working towards which certificate. Progress is
+-- worked out for every certificate regardless; this is what marks the ones
+-- someone is actually pursuing.
+CREATE TABLE IF NOT EXISTS student_certificates (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  certificate_id TEXT NOT NULL REFERENCES certificates(id) ON DELETE CASCADE,
+  declared_at TEXT NOT NULL,
+  UNIQUE(student_id, certificate_id)
+);
+CREATE INDEX IF NOT EXISTS idx_student_certificates_student ON student_certificates(student_id);
 `
 
 /**

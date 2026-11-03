@@ -2557,3 +2557,323 @@ input[type='month'] {
   background: var(--warn-soft);
   color: var(--warn);
 }
+
+/* ---- Certificates ---- */
+
+.cert {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.cert-head {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: var(--bg-elevated);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.cert-head:hover {
+  background: var(--bg-elevated-2);
+}
+
+.cert-head-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+
+.cert-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cert-figure {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.cert-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-elevated-2);
+  overflow: hidden;
+}
+
+.cert-bar-sm {
+  margin-top: 4px;
+  max-width: 160px;
+}
+
+.cert-bar-done {
+  background: var(--good);
+}
+
+.cert-bar-underway {
+  background: var(--accent-dim);
+}
+
+.cert-underway-note {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.cert-done-pill,
+.cert-declared-pill {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.cert-done-pill {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.cert-declared-pill {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.cert-detail {
+  padding: 4px 12px 12px;
+  border-top: 1px solid var(--border-soft);
+  background: var(--bg-elevated-2);
+}
+
+.cert-group {
+  margin-top: 10px;
+}
+
+.cert-group-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.cert-group-name {
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.cert-group-name.is-done {
+  color: var(--good);
+}
+
+.cert-group-units {
+  color: var(--text-faint);
+}
+
+.cert-group-child {
+  margin-left: 14px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+
+.cert-courses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cert-course {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.cert-course.standing-completed {
+  color: var(--text);
+}
+
+.cert-course.standing-in_progress {
+  color: var(--warn);
+}
+
+.cert-course-mark {
+  width: 12px;
+}
+
+.cert-course-code {
+  font-weight: 600;
+  min-width: 78px;
+}
+
+.cert-course-units,
+.cert-course-note {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.cert-declare {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.cert-show-all,
+.cert-empty {
+  font-size: 12.5px;
+}
+
+/* roster + editor */
+
+.cert-page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cert-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.cert-roster-summary {
+  margin: 0 0 12px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.cert-roster-figure {
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.cert-missing {
+  font-size: 12px;
+  max-width: 320px;
+}
+
+.cert-edit-notes {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-elevated-2);
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.cert-edit-group {
+  padding: 12px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  background: var(--bg-elevated);
+}
+
+.cert-edit-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.cert-edit-group-head .review-link {
+  margin-left: auto;
+}
+
+.cert-edit-child {
+  margin: 10px 0 0 14px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+
+.cert-edit-courses {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.cert-edit-courses li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 12.5px;
+}
+
+.cert-edit-courses li .review-link {
+  margin-left: auto;
+}
+
+.cert-edit-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cert-edit-add input[type='text'] {
+  flex: 1;
+  max-width: 220px;
+}
+
+.cert-edit-add input[type='number'] {
+  width: 70px;
+}
+
+.cert-edit-actions {
+  margin-top: 4px;
+}
+
+.cert-edit-subheading {
+  margin: 20px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+.review-link.danger {
+  color: var(--danger);
+}
+
+.cert-total {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.cert-total.is-off {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.cert-total-warn {
+  font-weight: 600;
+}

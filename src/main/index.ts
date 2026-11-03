@@ -5,6 +5,7 @@ import { closeDb, openDb } from './db/desktop'
 import { runAutoBackup } from './backup'
 import { harmonizeClasslistEventNames } from './importer'
 import { migrateLegacyDataDir } from './dataDir'
+import { seedCertificatesIfEmpty } from './db/certificates'
 import { setWorkbookReader } from './workbooks'
 import { desktopWorkbookReader } from './workbooksDesktop'
 
@@ -51,6 +52,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   setWorkbookReader(desktopWorkbookReader)
   openDb() // ensure schema exists before any window opens
+  seedCertificatesIfEmpty()
   harmonizeClasslistEventNames()
   registerIpcHandlers()
   createWindow()

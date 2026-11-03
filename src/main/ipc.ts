@@ -31,6 +31,23 @@ import { getAttendanceDates, getDashboardStats, getEventStudentSets, getFunnelSt
 import { lookUpPosition } from './positionLookup'
 import { getSettings, setInstitutionNames } from './db/settings'
 import {
+  addRequirement,
+  addSubstitution,
+  certificateRoster,
+  createCertificate,
+  createGroup,
+  deleteCertificate,
+  deleteGroup,
+  getCertificate,
+  listCertificates,
+  removeRequirement,
+  removeSubstitution,
+  setStudentCertificate,
+  studentCertificates,
+  updateCertificate,
+  updateGroup
+} from './db/certificates' 
+import {
   dismissLookups,
   enqueueLookups,
   getLookupStatus,
@@ -120,6 +137,39 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('lookups:stop', () => stopLookups())
   ipcMain.handle('lookups:retryFailed', () => retryFailedLookups())
   ipcMain.handle('lookups:dismiss', (_e, studentIds: string[]) => dismissLookups(studentIds))
+
+  ipcMain.handle('certificates:list', () => listCertificates())
+  ipcMain.handle('certificates:get', (_e, id: string) => getCertificate(id))
+  ipcMain.handle('certificates:roster', (_e, id: string) => certificateRoster(id))
+  ipcMain.handle('certificates:create', (_e, name: string, totalUnits: number | null, notes: string | null) =>
+    createCertificate(name, totalUnits, notes)
+  )
+  ipcMain.handle('certificates:update', (_e, id: string, fields: Parameters<typeof updateCertificate>[1]) =>
+    updateCertificate(id, fields)
+  )
+  ipcMain.handle('certificates:delete', (_e, id: string) => deleteCertificate(id))
+  ipcMain.handle('certificates:addGroup', (_e, certificateId: string, input: Parameters<typeof createGroup>[1]) =>
+    createGroup(certificateId, input)
+  )
+  ipcMain.handle('certificates:updateGroup', (_e, id: string, fields: Parameters<typeof updateGroup>[1]) =>
+    updateGroup(id, fields)
+  )
+  ipcMain.handle('certificates:deleteGroup', (_e, id: string) => deleteGroup(id))
+  ipcMain.handle('certificates:addRequirement', (_e, groupId: string, courseCode: string, creditUnits: number) =>
+    addRequirement(groupId, courseCode, creditUnits)
+  )
+  ipcMain.handle('certificates:removeRequirement', (_e, id: string) => removeRequirement(id))
+  ipcMain.handle(
+    'certificates:addSubstitution',
+    (_e, certificateId: string, replaces: string, accepted: string, alsoRequires: string | null) =>
+      addSubstitution(certificateId, replaces, accepted, alsoRequires)
+  )
+  ipcMain.handle('certificates:removeSubstitution', (_e, id: string) => removeSubstitution(id))
+
+  ipcMain.handle('students:certificates', (_e, studentId: string) => studentCertificates(studentId))
+  ipcMain.handle('students:setCertificate', (_e, studentId: string, certificateId: string, declared: boolean) =>
+    setStudentCertificate(studentId, certificateId, declared)
+  )
 
   ipcMain.handle('settings:get', () => getSettings())
   ipcMain.handle('settings:setInstitutionNames', (_e, names: string[]) => setInstitutionNames(names))

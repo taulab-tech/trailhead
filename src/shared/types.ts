@@ -320,3 +320,110 @@ export interface AppCapabilities {
    */
   restoreFromBackup: boolean
 }
+
+/* ----------------------------- Certificates ----------------------------- */
+
+/** Whether a course counts towards a certificate yet. */
+export type CourseStanding = 'completed' | 'in_progress' | 'none'
+
+export type GroupKind = 'required' | 'elective'
+
+/**
+ * A set of courses within a certificate. A "required" group needs every
+ * course in it; an "elective" group needs `minUnits` worth from the list. A
+ * group nested inside another expresses a rule like "9 units of electives,
+ * at least 3 of which must be COMM".
+ */
+export interface CertificateGroup {
+  id: string
+  name: string
+  kind: GroupKind
+  minUnits: number | null
+  parentId: string | null
+  sortOrder: number
+}
+
+export interface CertificateRequirement {
+  id: string
+  groupId: string
+  courseCode: string
+  /** What the catalogue says the course is worth, not what a class list says. */
+  creditUnits: number
+  sortOrder: number
+}
+
+/** "CHE 495.6 counts in place of GE 495.6, if GE 496.3 is also done." */
+export interface CertificateSubstitution {
+  id: string
+  replacesCode: string
+  acceptedCode: string
+  alsoRequiresCode: string | null
+}
+
+export interface Certificate {
+  id: string
+  name: string
+  /** Null means "add the parts up". */
+  totalUnits: number | null
+  notes: string | null
+}
+
+export interface CertificateDefinition extends Certificate {
+  groups: CertificateGroup[]
+  requirements: CertificateRequirement[]
+  substitutions: CertificateSubstitution[]
+}
+
+export interface RequirementProgress {
+  courseCode: string
+  creditUnits: number
+  standing: CourseStanding
+  /** The course that stood in for this one, when a substitution applied. */
+  satisfiedBy: string | null
+}
+
+export interface GroupProgress {
+  id: string
+  name: string
+  kind: GroupKind
+  minUnits: number | null
+  earnedUnits: number
+  satisfied: boolean
+  requirements: RequirementProgress[]
+  children: GroupProgress[]
+}
+
+export interface CertificateProgress {
+  certificateId: string
+  name: string
+  totalUnits: number
+  earnedUnits: number
+  /** Units they would gain by finishing what they are currently taking. */
+  inProgressUnits: number
+  percent: number
+  complete: boolean
+  groups: GroupProgress[]
+  /** Required courses still outstanding. */
+  missing: string[]
+}
+
+/** A certificate with one student's progress through it. */
+export interface StudentCertificate extends CertificateProgress {
+  /** True when the student has said they are working towards this one. */
+  declared: boolean
+}
+
+/** One student's standing in a certificate, for the roster view. */
+export interface CertificateRosterEntry {
+  studentId: string
+  firstName: string
+  lastName: string
+  yearInProgram: string | null
+  earnedUnits: number
+  inProgressUnits: number
+  totalUnits: number
+  percent: number
+  complete: boolean
+  declared: boolean
+  missing: string[]
+}
