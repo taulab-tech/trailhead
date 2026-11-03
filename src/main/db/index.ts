@@ -115,6 +115,21 @@ CREATE TABLE IF NOT EXISTS student_courses (
 CREATE INDEX IF NOT EXISTS idx_student_courses_student ON student_courses(student_id);
 CREATE INDEX IF NOT EXISTS idx_student_courses_code ON student_courses(course_code);
 
+-- When the data behind each of a student's fields was true, so a later
+-- import can tell whether what it is carrying is newer than what is on
+-- record. Without this, re-importing an old roster would quietly undo a
+-- newer one.
+CREATE TABLE IF NOT EXISTS student_field_sources (
+  student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  field TEXT NOT NULL,
+  -- ISO date the value was true, e.g. the term or the event's date.
+  observed_at TEXT NOT NULL,
+  -- The file it came from, or 'manual' for a value somebody typed in.
+  source TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (student_id, field)
+);
+
 CREATE TABLE IF NOT EXISTS certificates (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,

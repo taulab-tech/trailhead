@@ -30,6 +30,8 @@ import { createCategory, deleteCategory, listCategories, updateCategory } from '
 import { getAttendanceDates, getDashboardStats, getEventStudentSets, getFunnelStats } from './db/dashboard'
 import { lookUpPosition } from './positionLookup'
 import { getSettings, setInstitutionNames } from './db/settings'
+import { markFieldsManual } from './db/fieldSources'
+import { UPDATABLE_FIELDS, type UpdatableField } from '../shared/types'
 import {
   addRequirement,
   addSubstitution,
@@ -58,6 +60,11 @@ import {
 } from './lookupQueue'
 import type { ImportSheetRequest, NewStudentInput } from '../shared/types'
 
+/** Only the details an import could otherwise overwrite need marking. */
+function isUpdatableField(field: string): field is UpdatableField {
+  return (UPDATABLE_FIELDS as readonly string[]).includes(field)
+}
+
 export function registerIpcHandlers(): void {
   ipcMain.handle('dialog:openFiles', async () => {
     const win = BrowserWindow.getFocusedWindow()
@@ -78,9 +85,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('students:list', (_e, search?: string) => listStudents(search))
   ipcMain.handle('students:detail', (_e, id: string) => getStudentDetail(id))
   ipcMain.handle('students:create', (_e, input: NewStudentInput) => createStudent(input))
-  ipcMain.handle('students:update', (_e, id: string, fields: Parameters<typeof updateStudent>[1]) =>
+  ipcMain.handle('students:update', (_e, id: string, fields: Parameters<typeof updateStudent>[1]) => {
     updateStudent(id, fields)
-  )
+    markFieldsManual(id, Object.keys(fields).filter(isUpdatableField))
+  })
   ipcMain.handle('students:delete', (_e, id: string) => deleteStudent(id))
   ipcMain.handle(
     'students:addAttendance',

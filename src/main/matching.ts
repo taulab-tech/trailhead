@@ -10,6 +10,8 @@ import {
   updateStudent
 } from './db/students'
 import { suggestDuplicate } from './db/duplicates'
+import { fieldSourcesFor, MANUAL_SOURCE, recordFieldSource } from './db/fieldSources'
+import { FIELD_LABELS, UPDATABLE_FIELDS, type FieldUpdate, type UpdatableField } from '../shared/types'
 import { idLocalPart, normalizeName, normalizeNsid } from './normalize'
 import { nameSimilarity } from './similarity'
 
@@ -54,28 +56,100 @@ export interface MatchResult {
   created: boolean
 }
 
-function enrichIfBlank(studentId: string, fields: Record<string, string | null | undefined>): void {
+/**
+ * What an import is allowed to do to a student who is already on record.
+ *
+ * `observedAt` is when the incoming row's data was true — a class list's
+ * term, or the event's date. It is what makes "is this newer?" answerable.
+ */
+export interface MatchContext {
+  observedAt: string | null
+  sourceFile: string
+  /** Proposed changes the user has unticked, by "studentId:field". */
+  rejected?: Set<string>
+  /** Filled in as the import runs, for the preview and the summary. */
+  proposed: FieldUpdate[]
+  blanksFilled: number
+  updatesApplied: number
+}
+
+export function newMatchContext(observedAt: string | null, sourceFile: string, rejected?: Set<string>): MatchContext {
+  return { observedAt, sourceFile, rejected, proposed: [], blanksFilled: 0, updatesApplied: 0 }
+}
+
+/**
+ * Brings a student's details up to date from an imported row.
+ *
+ * A blank is filled quietly — there is nothing to lose and nothing to
+ * decide. An existing value is only replaced when the incoming row is
+ * demonstrably newer than whatever produced it, and never when a person
+ * typed it in: those are offered to the user instead. Anything older than
+ * what is on record is ignored, so re-importing an old roster can't undo a
+ * newer one.
+ */
+function applyIncoming(
+  studentId: string,
+  fields: Partial<Record<UpdatableField, string | null | undefined>>,
+  enrolTerm: 'fall' | 'winter' | null | undefined,
+  context: MatchContext
+): void {
   const current = getStudentById(studentId)
   if (!current) return
+
+  const sources = fieldSourcesFor(studentId)
   const patch: Record<string, string | null> = {}
-  const map: Record<string, keyof typeof current> = {
-    nsid: 'nsid',
-    college: 'college',
-    discipline: 'discipline',
-    degree: 'degree',
-    program: 'program',
-    yearInProgram: 'yearInProgram',
-    enrolTerm: 'enrolTerm'
-  }
-  for (const [key, currentField] of Object.entries(map)) {
-    const incoming = fields[key]
-    const existingVal = current[currentField] as string | null
-    if ((!existingVal || !existingVal.trim()) && incoming && incoming.trim()) {
-      patch[key] = incoming
+  const recorded: UpdatableField[] = []
+
+  for (const field of UPDATABLE_FIELDS) {
+    const raw = fields[field]
+    const incoming = raw?.trim()
+    if (!incoming) continue
+
+    const existing = (current[field] as string | null)?.trim() ?? ''
+    if (existing === incoming) continue
+
+    if (!existing) {
+      patch[field] = incoming
+      recorded.push(field)
+      context.blanksFilled++
+      continue
     }
+
+    const source = sources.get(field)
+    const manual = source?.source === MANUAL_SOURCE
+    // An undated row can't be shown to be newer, so it never replaces
+    // anything; nor does one older than what produced the current value.
+    const newer =
+      context.observedAt !== null && (!source || context.observedAt > source.observedAt)
+    if (!manual && !newer) continue
+
+    const key = `${studentId}:${field}`
+    context.proposed.push({
+      key,
+      studentId,
+      studentName: `${current.firstName} ${current.lastName}`.trim(),
+      field,
+      label: FIELD_LABELS[field],
+      from: existing,
+      to: incoming,
+      fromObservedAt: source?.observedAt ?? null,
+      fromManual: manual
+    })
+
+    if (context.rejected?.has(key)) continue
+    patch[field] = incoming
+    recorded.push(field)
+    context.updatesApplied++
   }
+
+  // Enrol term rides along with the year it was read from; it is never
+  // shown as a proposed change of its own.
+  if (enrolTerm && !current.enrolTerm) patch.enrolTerm = enrolTerm
+
   if (Object.keys(patch).length > 0) {
     updateStudent(studentId, patch as Parameters<typeof updateStudent>[1])
+    const observedAt = context.observedAt ?? new Date().toISOString().slice(0, 10)
+    for (const field of recorded) recordFieldSource(studentId, field, observedAt, context.sourceFile)
   }
 }
 
@@ -87,7 +161,7 @@ function enrichIfBlank(studentId: string, fields: Record<string, string | null |
  * (skipped when the IDs conflict). Anything less certain is left for the
  * fuzzy duplicate pass below rather than being auto-merged.
  */
-export function matchStudent(person: PersonRecord): MatchResult {
+export function matchStudent(person: PersonRecord, context?: MatchContext): MatchResult {
   const normalizedNsid = normalizeNsid(person.nsid)
   const normalizedEmails = person.emails
     .map((e) => e.trim())
@@ -133,15 +207,19 @@ export function matchStudent(person: PersonRecord): MatchResult {
   }
 
   if (studentId) {
-    enrichIfBlank(studentId, {
-      nsid: normalizedNsid,
-      college: person.college,
-      discipline: person.discipline,
-      degree: person.degree,
-      program: person.program,
-      yearInProgram: person.yearInProgram,
-      enrolTerm: person.enrolTerm
-    })
+    applyIncoming(
+      studentId,
+      {
+        nsid: normalizedNsid,
+        college: person.college,
+        discipline: person.discipline,
+        degree: person.degree,
+        program: person.program,
+        yearInProgram: person.yearInProgram
+      },
+      person.enrolTerm,
+      context ?? newMatchContext(null, 'unknown')
+    )
     for (const email of normalizedEmails) addEmail(studentId, email)
     for (const phone of person.phones) addPhone(studentId, phone)
     return { studentId, created: false }
@@ -158,6 +236,14 @@ export function matchStudent(person: PersonRecord): MatchResult {
     yearInProgram: person.yearInProgram,
     enrolTerm: person.enrolTerm
   })
+  if (context?.observedAt) {
+    for (const field of UPDATABLE_FIELDS) {
+      const value = person[field]
+      if (value && String(value).trim()) {
+        recordFieldSource(newId, field, context.observedAt, context.sourceFile)
+      }
+    }
+  }
   for (const email of normalizedEmails) addEmail(newId, email)
   for (const phone of person.phones) addPhone(newId, phone)
   return { studentId: newId, created: true }

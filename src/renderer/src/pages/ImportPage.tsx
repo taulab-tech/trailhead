@@ -23,6 +23,7 @@ interface SheetConfig {
   mapping: ColumnMapping
   view: 'students' | 'mapping' | null
   rows: ReviewRow[]
+  rejectedUpdates: string[]
   removed: ReviewRow[]
 }
 
@@ -68,6 +69,7 @@ export default function ImportPage({
           mapping: { ...sheet.suggestedMapping },
           view: 'students' as const,
           rows: sheet.rows.map((values, id) => ({ id, values })),
+          rejectedUpdates: [],
           removed: []
         }))
       setSheets((prev) => {
@@ -190,7 +192,8 @@ export default function ImportPage({
       for (const s of included) {
         const result = await window.api.commitImport({
           ...baseRequest(s),
-          rows: s.rows.map((r) => r.values)
+          rows: s.rows.map((r) => r.values),
+          rejectedUpdates: s.rejectedUpdates
         })
         collected.push(result)
       }
@@ -440,6 +443,21 @@ export default function ImportPage({
 
                   {s.view === 'students' && (
                     <ImportRowsReview
+                      rejectedUpdates={s.rejectedUpdates}
+                      onToggleUpdate={(key) =>
+                        setSheets((prev) =>
+                          prev.map((sheet) =>
+                            sheet.key === s.key
+                              ? {
+                                  ...sheet,
+                                  rejectedUpdates: sheet.rejectedUpdates.includes(key)
+                                    ? sheet.rejectedUpdates.filter((k) => k !== key)
+                                    : [...sheet.rejectedUpdates, key]
+                                }
+                              : sheet
+                          )
+                        )
+                      }
                       request={baseRequest(s)}
                       headers={s.sheet.headers}
                       mapping={s.mapping}

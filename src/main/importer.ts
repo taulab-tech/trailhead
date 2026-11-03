@@ -4,7 +4,7 @@ import { findOrCreateEvent } from './db/events'
 import { addAttendance, getStudentById } from './db/students'
 import { getDb } from './db/index'
 import { findCategoryByName } from './db/categories'
-import { detectFuzzyDuplicates, matchStudent } from './matching'
+import { detectFuzzyDuplicates, matchStudent, newMatchContext } from './matching'
 import { normalizeEmail, normalizePhone, titleCase } from './normalize'
 import { enrolDateFor, parseEnrolTerm, parseEnrolYear, parseYearMonthStamp } from './enrolDate'
 import {
@@ -17,6 +17,7 @@ import {
 import { recordStudentCourse } from './db/courses'
 import type {
   ColumnMapping,
+  FieldUpdate,
   ImportEventSummary,
   ImportPreview,
   ImportResult,
@@ -366,6 +367,12 @@ function deriveEventName(sheetName: string, fileName: string): string {
   return sheetName.trim()
 }
 
+/** "202509" as a date, so a class list can be dated by its term. */
+function termDate(term: string): string | null {
+  const match = term.match(/^(\d{4})(\d{2})$/)
+  return match ? `${match[1]}-${match[2]}-01` : null
+}
+
 /**
  * Reads the course a sheet is a roster for, or null if it isn't one.
  *
@@ -447,20 +454,22 @@ export function commitImport(request: ImportSheetRequest): ImportResult {
  * would happen to each row — so the preview always agrees with the import.
  */
 export function previewImport(request: ImportSheetRequest): ImportPreview {
-  const { result, rowOutcomes } = runSheetImport(request, true)
+  const { result, rowOutcomes, proposed } = runSheetImport(request, true)
   return {
     rows: rowOutcomes,
     newStudents: result.newStudents,
     matchedExisting: result.matchedExisting,
     skippedBlankRows: result.skippedBlankRows,
-    newDuplicateSuggestions: result.newDuplicateSuggestions
+    newDuplicateSuggestions: result.newDuplicateSuggestions,
+    updates: proposed,
+    blanksFilled: result.blanksFilled
   }
 }
 
 function runSheetImport(
   request: ImportSheetRequest,
   dryRun: boolean
-): { result: ImportResult; rowOutcomes: RowOutcome[] } {
+): { result: ImportResult; rowOutcomes: RowOutcome[]; proposed: FieldUpdate[] } {
   // Rows edited on the review screen are imported as given; otherwise the
   // sheet is read fresh from the file. The mapping always lists every header.
   let headers: string[]
@@ -486,6 +495,16 @@ function runSheetImport(
   }
 
   const course = worksheet ? classlistCourseFor(worksheet, headers, request.fileName) : null
+
+  // When this sheet's data was true. A class list is dated by its term; any
+  // other roster by the event's date. Without one, nothing already on record
+  // can be shown to be out of date, so nothing is replaced.
+  const observedAt = course ? termDate(course.term) ?? request.eventDate : request.eventDate
+  const context = newMatchContext(
+    observedAt,
+    request.fileName,
+    new Set(request.rejectedUpdates ?? [])
+  )
 
   const emailColumns = headers.filter((h) => request.mapping[h] === 'email')
   const phoneColumns = headers.filter((h) => request.mapping[h] === 'phone')
@@ -622,7 +641,7 @@ function runSheetImport(
         // isn't known; that must not land on the record as if it were one.
         yearInProgram: yearCol ? meaningfulValue(row[yearCol]) : null,
         enrolTerm: yearCol ? parseEnrolTerm(row[yearCol]) : null
-      })
+      }, context)
 
       const { eventId, eventName } = eventIdForRow(yearCol ? row[yearCol] : null)
       addAttendance(studentId, eventId, extraFields)
@@ -700,8 +719,11 @@ function runSheetImport(
       matchedExisting,
       newDuplicateSuggestions,
       skippedBlankRows,
-      newStudentIds: dryRun ? [] : [...createdByRow.keys()]
+      newStudentIds: dryRun ? [] : [...createdByRow.keys()],
+      updatedFields: context.updatesApplied,
+      blanksFilled: context.blanksFilled
     },
-    rowOutcomes
+    rowOutcomes,
+    proposed: context.proposed
   }
 }

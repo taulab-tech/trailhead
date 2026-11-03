@@ -164,6 +164,11 @@ export interface ImportSheetRequest {
   mapping: ColumnMapping
   /** The rows to import, as reviewed/edited by the user. Omitted = read the sheet from the file. */
   rows?: Record<string, string>[]
+  /**
+   * Proposed detail changes the user unticked, by key. Anything not listed
+   * here is applied — refreshing records is the point of re-importing.
+   */
+  rejectedUpdates?: string[]
 }
 
 /** What importing a row would do. `repeatOfRow` is a 0-based index into the same request's rows. */
@@ -179,6 +184,10 @@ export interface ImportPreview {
   matchedExisting: number
   skippedBlankRows: number
   newDuplicateSuggestions: number
+  /** Details of existing students this import would change. */
+  updates: FieldUpdate[]
+  /** Blanks it would fill in, which need no decision. */
+  blanksFilled: number
 }
 
 export interface ImportEventSummary {
@@ -198,6 +207,9 @@ export interface ImportResult {
   skippedBlankRows: number
   /** Students this import created, e.g. to look them up on LinkedIn afterwards. */
   newStudentIds: string[]
+  /** Details of existing students that were refreshed. */
+  updatedFields: number
+  blanksFilled: number
 }
 
 export interface NewStudentInput {
@@ -470,4 +482,47 @@ export interface YearEstimate {
   basis: string | null
   /** True when the observation is from this academic year, so nothing was inferred. */
   current: boolean
+}
+
+/* ------------------------- Updating on re-import ------------------------ */
+
+/** The student details an import is allowed to refresh. */
+export const UPDATABLE_FIELDS = [
+  'nsid',
+  'college',
+  'discipline',
+  'degree',
+  'program',
+  'yearInProgram'
+] as const
+
+export type UpdatableField = (typeof UPDATABLE_FIELDS)[number]
+
+export const FIELD_LABELS: Record<UpdatableField, string> = {
+  nsid: 'Student ID',
+  college: 'College',
+  discipline: 'Discipline',
+  degree: 'Degree',
+  program: 'Program',
+  yearInProgram: 'Year in program'
+}
+
+/**
+ * A detail an import would change on a student who is already on record.
+ * Filling a blank happens quietly; replacing something is only ever
+ * proposed, so nothing a person typed in is lost without them seeing it.
+ */
+export interface FieldUpdate {
+  /** "studentId:field" — what the review screen ticks and unticks. */
+  key: string
+  studentId: string
+  studentName: string
+  field: UpdatableField
+  label: string
+  from: string
+  to: string
+  /** What the existing value was last known to be true, if anything says. */
+  fromObservedAt: string | null
+  /** Whether the existing value was typed in rather than imported. */
+  fromManual: boolean
 }

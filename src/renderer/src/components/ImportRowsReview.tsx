@@ -23,7 +23,9 @@ export default function ImportRowsReview({
   removed,
   onEdit,
   onRemove,
-  onRestoreAll
+  onRestoreAll,
+  rejectedUpdates,
+  onToggleUpdate
 }: {
   request: Omit<ImportSheetRequest, 'rows'>
   headers: string[]
@@ -33,6 +35,8 @@ export default function ImportRowsReview({
   onEdit: (id: number, header: string, value: string) => void
   onRemove: (id: number) => void
   onRestoreAll: () => void
+  rejectedUpdates: string[]
+  onToggleUpdate: (key: string) => void
 }): React.JSX.Element {
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
@@ -55,7 +59,7 @@ export default function ImportRowsReview({
     let cancelled = false
     const timer = setTimeout(() => {
       window.api
-        .previewImportRows({ ...request, rows: rows.map((r) => r.values) })
+        .previewImportRows({ ...request, rows: rows.map((r) => r.values), rejectedUpdates })
         .then((p) => {
           if (cancelled) return
           setPreview(p)
@@ -73,6 +77,9 @@ export default function ImportRowsReview({
   }, [rows, mapping, request.filePath, request.sheetName, request.eventName, request.eventDate, request.categoryId])
 
   const repeats = preview ? preview.rows.filter((r) => r.status === 'repeat').length : 0
+  const updates = preview?.updates ?? []
+  const rejected = new Set(rejectedUpdates)
+  const accepted = updates.filter((u) => !rejected.has(u.key)).length
 
   return (
     <div className="review">
@@ -99,6 +106,11 @@ export default function ImportRowsReview({
                 <b>{preview.skippedBlankRows}</b> will be skipped
               </span>
             )}
+            {preview.blanksFilled > 0 && (
+              <span className="review-stat text-dim">
+                <b>{preview.blanksFilled}</b> blank detail{preview.blanksFilled === 1 ? '' : 's'} filled in
+              </span>
+            )}
             {preview.newDuplicateSuggestions > 0 && (
               <span className="review-stat text-dim">
                 {preview.newDuplicateSuggestions} possible duplicate
@@ -121,6 +133,54 @@ export default function ImportRowsReview({
           </span>
         )}
       </div>
+
+      {updates.length > 0 && (
+        <div className="review-updates">
+          <div className="review-updates-head">
+            <strong>
+              {updates.length} detail{updates.length === 1 ? '' : 's'} would change on students already on
+              file
+            </strong>
+            <span className="text-faint">
+              {accepted} of {updates.length} will be applied
+            </span>
+            <span className="spacer" />
+            <button
+              className="review-link"
+              disabled={accepted === updates.length}
+              onClick={() => updates.forEach((u) => rejected.has(u.key) && onToggleUpdate(u.key))}
+            >
+              Apply all
+            </button>
+            <button
+              className="review-link"
+              disabled={accepted === 0}
+              onClick={() => updates.forEach((u) => !rejected.has(u.key) && onToggleUpdate(u.key))}
+            >
+              Keep existing
+            </button>
+          </div>
+          <ul className="review-updates-list">
+            {updates.map((update) => (
+              <li key={update.key} className={rejected.has(update.key) ? 'is-rejected' : ''}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!rejected.has(update.key)}
+                    onChange={() => onToggleUpdate(update.key)}
+                  />
+                  <span className="review-update-name">{update.studentName}</span>
+                  <span className="text-faint">{update.label}</span>
+                  <span className="review-update-from">{update.from}</span>
+                  <span className="review-update-arrow">→</span>
+                  <span className="review-update-to">{update.to}</span>
+                  {update.fromManual && <span className="review-update-flag">typed in by hand</span>}
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {columns.length === 0 ? (
         <div className="empty-state" style={{ padding: 28 }}>

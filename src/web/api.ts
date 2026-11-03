@@ -19,6 +19,7 @@ import {
   getFunnelStats
 } from '../main/db/dashboard'
 import { getSettings, setInstitutionNames } from '../main/db/settings'
+import { markFieldsManual } from '../main/db/fieldSources'
 import {
   addRequirement,
   addSubstitution,
@@ -39,12 +40,14 @@ import {
 import { commitImport, parseWorkbookForPreview, previewImport } from '../main/importer'
 import type {
   AppCapabilities,
+  UpdatableField,
   ImportSheetRequest,
   LookupItem,
   LookupStatus,
   NewStudentInput,
   PositionSearchResult
 } from '../shared/types'
+import { UPDATABLE_FIELDS } from '../shared/types'
 import { loadWorkbook, registerFile } from './workbooks'
 import { downloadDatabase, save } from './session'
 import { pickFilesWithInput } from './storage'
@@ -112,6 +115,14 @@ export const webApi = {
   createStudent: async (input: NewStudentInput) => createStudent(input),
   updateStudent: async (id: string, fields: Parameters<typeof updateStudent>[1]) => {
     updateStudent(id, fields)
+    // Typed in by a person, so no later import replaces it without asking.
+    markFieldsManual(
+      id,
+      Object.keys(fields).filter((f): f is UpdatableField =>
+        (UPDATABLE_FIELDS as readonly string[]).includes(f)
+      )
+    )
+    await save()
   },
   deleteStudent: async (id: string) => deleteStudent(id),
   addAttendance: async (studentId: string, eventId: string, extraFields?: Record<string, string>) => {
