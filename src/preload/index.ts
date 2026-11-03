@@ -17,11 +17,14 @@ import type {
   StudentDetail,
   PositionSearchResult,
   AppSettings,
+  AppCapabilities,
   LookupItem,
   LookupStatus
 } from '../shared/types'
 
 const api = {
+  capabilities: { positionLookup: true, restoreFromBackup: true } as AppCapabilities,
+
   getPathForFile: (file: File): string => webUtils.getPathForFile(file),
   pickFiles: (): Promise<string[]> => ipcRenderer.invoke('dialog:openFiles'),
 

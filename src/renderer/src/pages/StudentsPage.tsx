@@ -60,18 +60,20 @@ export default function StudentsPage({
         >
           All students
         </button>
-        <button
-          role="tab"
-          aria-selected={view === 'matches'}
-          className={`sheet-tab ${view === 'matches' ? 'is-active' : ''}`}
-          onClick={() => setView('matches')}
-        >
-          LinkedIn matches
-          {matchesToReview > 0 && <span className="sheet-tab-count">{matchesToReview}</span>}
-        </button>
+        {window.api.capabilities.positionLookup && (
+          <button
+            role="tab"
+            aria-selected={view === 'matches'}
+            className={`sheet-tab ${view === 'matches' ? 'is-active' : ''}`}
+            onClick={() => setView('matches')}
+          >
+            LinkedIn matches
+            {matchesToReview > 0 && <span className="sheet-tab-count">{matchesToReview}</span>}
+          </button>
+        )}
       </div>
 
-      {view === 'matches' ? (
+      {view === 'matches' && window.api.capabilities.positionLookup ? (
         <LinkedInMatches onNavigate={onNavigate} />
       ) : (
       <>

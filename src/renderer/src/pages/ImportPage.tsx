@@ -299,12 +299,14 @@ export default function ImportPage({
                         background, one every few seconds. You review every match before anything is saved.
                       </p>
                     </div>
-                    <button
-                      className="btn btn-primary btn-sm"
-                      onClick={async () => setLookupsQueued(await window.api.enqueueLookups(newIds))}
-                    >
-                      Find LinkedIn matches for {newIds.length} new student{newIds.length === 1 ? '' : 's'}
-                    </button>
+                    {window.api.capabilities.positionLookup && (
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={async () => setLookupsQueued(await window.api.enqueueLookups(newIds))}
+                      >
+                        Find LinkedIn matches for {newIds.length} new student{newIds.length === 1 ? '' : 's'}
+                      </button>
+                    )}
                   </>
                 ) : (
                   <>

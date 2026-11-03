@@ -1,10 +1,12 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
 import { registerIpcHandlers } from './ipc'
-import { closeDb, getDb } from './db'
+import { closeDb, openDb } from './db/desktop'
 import { runAutoBackup } from './backup'
 import { harmonizeClasslistEventNames } from './importer'
 import { migrateLegacyDataDir } from './dataDir'
+import { setWorkbookReader } from './workbooks'
+import { desktopWorkbookReader } from './workbooksDesktop'
 
 // Dev runs and installed builds share one data folder (%APPDATA%\Trailhead on
 // Windows), whatever the package or product name. Test harnesses point
@@ -47,7 +49,8 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  getDb() // ensure schema exists before any window opens
+  setWorkbookReader(desktopWorkbookReader)
+  openDb() // ensure schema exists before any window opens
   harmonizeClasslistEventNames()
   registerIpcHandlers()
   createWindow()

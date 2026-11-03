@@ -1,12 +1,9 @@
-import fs from 'fs'
-import path from 'path'
-import { app } from 'electron'
-import Database from 'better-sqlite3'
 import { normalizeNsid } from '../normalize'
-import { DB_FILE_NAME } from '../dataDir'
 import { splitHeadline } from '../../shared/positions'
+import { getDb, type SqlDriver } from './driver'
 
-let dbInstance: Database.Database | null = null
+export { getDb, hasDb, setDbDriver } from './driver'
+export type { SqlDriver, SqlStatement } from './driver'
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS students (
@@ -93,11 +90,30 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 `
 
+/**
+ * Creates the schema if it isn't there and brings an older database up to
+ * date. Safe to run against a brand-new database and against one saved by any
+ * earlier version — which matters more on the web, where the file people open
+ * could have come from any build of the app.
+ */
+export function initializeDatabase(db: SqlDriver): void {
+  db.pragma('foreign_keys = ON')
+  db.exec(SCHEMA)
+  migrateSchema(db)
+}
+
+/** True if `db` holds a Trailhead database rather than some other SQLite file. */
+export function looksLikeTrailheadDb(db: SqlDriver): boolean {
+  return !!db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'students'")
+    .get()
+}
+
 // `CREATE TABLE IF NOT EXISTS` only applies to brand-new tables — it won't add
 // columns to a table that already exists from a previous version of the app.
 // Anything added to an existing table after its first release needs an
 // explicit migration step like this one.
-function migrateSchema(db: Database.Database): void {
+function migrateSchema(db: SqlDriver): void {
   const eventColumns = db.prepare('PRAGMA table_info(events)').all() as { name: string }[]
   if (!eventColumns.some((c) => c.name === 'category_id')) {
     db.exec(
@@ -124,7 +140,7 @@ function migrateSchema(db: Database.Database): void {
  * Positions saved before the separate organisation field held both in one
  * line ("PLC Programmer at Cameco"); split those where the line says "at"/"@".
  */
-function splitCombinedPositions(db: Database.Database): void {
+function splitCombinedPositions(db: SqlDriver): void {
   const rows = db
     .prepare('SELECT id, position FROM students WHERE position IS NOT NULL AND position_org IS NULL')
     .all() as { id: string; position: string }[]
@@ -145,7 +161,7 @@ function splitCombinedPositions(db: Database.Database): void {
  * as-is rather than violating the unique index — those two records are
  * likely the same person and are for the user to merge.
  */
-function renormalizeNsids(db: Database.Database): void {
+function renormalizeNsids(db: SqlDriver): void {
   const rows = db.prepare('SELECT id, nsid FROM students WHERE nsid IS NOT NULL').all() as {
     id: string
     nsid: string
@@ -163,45 +179,6 @@ function renormalizeNsids(db: Database.Database): void {
   tx()
 }
 
-function resolveDbPath(): string {
-  return process.env.TRAILHEAD_DB_PATH ?? path.join(app.getPath('userData'), DB_FILE_NAME)
-}
-
-export function getDb(): Database.Database {
-  if (dbInstance) return dbInstance
-
-  const dbPath = resolveDbPath()
-
-  dbInstance = new Database(dbPath)
-  dbInstance.pragma('journal_mode = WAL')
-  dbInstance.pragma('foreign_keys = ON')
-  dbInstance.exec(SCHEMA)
-  migrateSchema(dbInstance)
-  return dbInstance
-}
-
-export function closeDb(): void {
-  dbInstance?.close()
-  dbInstance = null
-}
-
-export function getDbPath(): string {
-  return resolveDbPath()
-}
-
-export function getBackupDir(): string {
-  return path.join(app.getPath('userData'), 'backups')
-}
-
-/**
- * Online backup via better-sqlite3's step-based backup API — safe to run
- * against a live, WAL-mode database (unlike copying the file directly, which
- * can grab it mid-checkpoint and produce a torn copy).
- */
-export async function backupDatabaseTo(destPath: string): Promise<void> {
-  await getDb().backup(destPath)
-}
-
 /** Deletes every student, event, attendance record and group, leaving an empty trail. */
 export function wipeDatabase(): void {
   const db = getDb()
@@ -212,42 +189,4 @@ export function wipeDatabase(): void {
     db.exec('DELETE FROM event_categories')
   })
   tx()
-}
-
-/**
- * Replaces the live database file with `sourcePath`. Takes a safety snapshot
- * of the current database first (returned so the caller can surface where it
- * went), since this is only ever invoked from a destructive "restore" action
- * where picking the wrong file would otherwise be unrecoverable.
- */
-export async function restoreDatabaseFrom(sourcePath: string): Promise<string> {
-  const probe = new Database(sourcePath, { readonly: true, fileMustExist: true })
-  let looksValid: boolean
-  try {
-    looksValid = !!probe
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'students'")
-      .get()
-  } finally {
-    probe.close()
-  }
-  if (!looksValid) throw new Error('That file does not look like a Trailhead database.')
-
-  const backupDir = getBackupDir()
-  fs.mkdirSync(backupDir, { recursive: true })
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const safetyPath = path.join(backupDir, `trailhead-before-restore-${stamp}.db`)
-  await backupDatabaseTo(safetyPath)
-
-  const liveDbPath = resolveDbPath()
-  getDb().pragma('wal_checkpoint(TRUNCATE)')
-  closeDb()
-
-  for (const suffix of ['', '-wal', '-shm']) {
-    const target = `${liveDbPath}${suffix}`
-    if (fs.existsSync(target)) fs.rmSync(target)
-  }
-  fs.copyFileSync(sourcePath, liveDbPath)
-
-  getDb() // reopen — re-runs schema migrations in case the backup predates them
-  return safetyPath
 }

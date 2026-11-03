@@ -269,3 +269,19 @@ export interface SearchAttempt {
   /** Profiles with the student's name among the results. */
   profilesFound: number
 }
+
+/**
+ * What this build of Trailhead can do. The desktop app can search the web for
+ * a student's position; the web app deliberately cannot — it has no backend
+ * to search from, and routing it through one would put student names on
+ * somebody else's server. Screens check here rather than failing on click.
+ */
+export interface AppCapabilities {
+  positionLookup: boolean
+  /**
+   * Whether the app owns a database file it can swap out from under itself.
+   * The desktop build does; on the web the user opens a file themselves, so
+   * restoring means opening a different one from the start screen.
+   */
+  restoreFromBackup: boolean
+}

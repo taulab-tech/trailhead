@@ -2,7 +2,8 @@ import { dialog, ipcMain, BrowserWindow } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { parseWorkbookForPreview, commitImport, previewImport } from './importer'
-import { backupDatabaseTo, getBackupDir, restoreDatabaseFrom, wipeDatabase } from './db'
+import { wipeDatabase } from './db'
+import { backupDatabaseTo, getBackupDir, restoreDatabaseFrom } from './db/desktop'
 import {
   addAttendance,
   createStudent,

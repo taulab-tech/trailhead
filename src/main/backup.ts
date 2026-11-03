@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { backupDatabaseTo, getBackupDir } from './db'
+import { backupDatabaseTo, getBackupDir } from './db/desktop'
 
 const AUTO_BACKUPS_TO_KEEP = 14
 

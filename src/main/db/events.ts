@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { newId } from '../ids'
 import { getDb } from './index'
 import { getStudentById } from './students'
 import type { EventDetail, EventRecord, Student } from '../../shared/types'
@@ -104,7 +104,7 @@ export function findOrCreateEvent(
     }
     return existingId
   }
-  const id = randomUUID()
+  const id = newId()
   db.prepare(
     `INSERT INTO events (id, name, date, source_file, source_sheet, category_id, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`

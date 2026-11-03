@@ -1,5 +1,5 @@
-import path from 'path'
 import * as XLSX from 'xlsx'
+import { readWorkbook, workbookBaseName } from './workbooks'
 import { findOrCreateEvent } from './db/events'
 import { addAttendance, getStudentById } from './db/students'
 import { getDb } from './db/index'
@@ -18,10 +18,6 @@ import type {
   ParsedWorkbook,
   RowOutcome
 } from '../shared/types'
-
-function readWorkbook(filePath: string): XLSX.WorkBook {
-  return XLSX.readFile(filePath, { cellDates: false })
-}
 
 function detectMapping(headers: string[], rows: Record<string, string>[] = []): ColumnMapping {
   const mapping: ColumnMapping = {}
@@ -363,7 +359,7 @@ function deriveEventName(sheetName: string, fileName: string): string {
 }
 
 export function parseWorkbookForPreview(filePath: string): ParsedWorkbook {
-  const fileName = path.basename(filePath)
+  const fileName = workbookBaseName(filePath)
   const workbook = readWorkbook(filePath)
   const sheets: ParsedSheet[] = []
 

@@ -185,10 +185,12 @@ function Shell(): React.JSX.Element {
             <Icon d="M12 3v12M7 10l5 5 5-5M4 21h16" />
             {dbAction === 'export' ? 'Exporting…' : 'Export backup…'}
           </button>
-          <button className="sidebar-action" disabled={dbAction !== null} onClick={restoreBackup}>
-            <Icon d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />
-            {dbAction === 'restore' ? 'Restoring…' : 'Restore from backup…'}
-          </button>
+          {window.api.capabilities.restoreFromBackup && (
+            <button className="sidebar-action" disabled={dbAction !== null} onClick={restoreBackup}>
+              <Icon d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />
+              {dbAction === 'restore' ? 'Restoring…' : 'Restore from backup…'}
+            </button>
+          )}
           <button className="sidebar-action danger" disabled={dbAction !== null} onClick={wipeAll}>
             <Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
             {dbAction === 'wipe' ? 'Wiping…' : 'Wipe all data'}

@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { newId } from '../ids'
 import { getDb } from './index'
 import { getStudentById } from './students'
 import type { PossibleDuplicate } from '../../shared/types'
@@ -25,7 +25,7 @@ export function suggestDuplicate(studentAId: string, studentBId: string, score: 
   db.prepare(
     `INSERT INTO possible_duplicates (id, student_a_id, student_b_id, score, reason, status, created_at)
      VALUES (?, ?, ?, ?, ?, 'pending', ?)`
-  ).run(randomUUID(), a, b, score, reason, new Date().toISOString())
+  ).run(newId(), a, b, score, reason, new Date().toISOString())
 }
 
 export function listPossibleDuplicates(status: 'pending' | 'merged' | 'dismissed' = 'pending'): PossibleDuplicate[] {

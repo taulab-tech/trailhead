@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { newId } from '../ids'
 import { getDb } from './index'
 import { normalizeEmail, normalizeNsid, normalizePhone } from '../normalize'
 import type { Attendance, NewStudentInput, Student, StudentDetail } from '../../shared/types'
@@ -194,7 +194,7 @@ export function getAllStudentsMinimal(): MinimalStudent[] {
 
 export function createStudent(input: NewStudentInput): string {
   const db = getDb()
-  const id = randomUUID()
+  const id = newId()
   const now = new Date().toISOString()
   db.prepare(
     `INSERT INTO students
@@ -281,7 +281,7 @@ export function addEmail(studentId: string, email: string): boolean {
     | undefined
   if (existing) return existing.student_id === studentId
   db.prepare('INSERT INTO student_emails (id, student_id, email) VALUES (?, ?, ?)').run(
-    randomUUID(),
+    newId(),
     studentId,
     normalized
   )
@@ -294,7 +294,7 @@ export function addPhone(studentId: string, phone: string): void {
   const db = getDb()
   db.prepare(
     'INSERT OR IGNORE INTO student_phones (id, student_id, phone) VALUES (?, ?, ?)'
-  ).run(randomUUID(), studentId, normalized)
+  ).run(newId(), studentId, normalized)
 }
 
 export function addAttendance(
@@ -309,7 +309,7 @@ export function addAttendance(
   if (existing) return 'exists'
   db.prepare(
     'INSERT INTO attendances (id, student_id, event_id, extra_fields, created_at) VALUES (?, ?, ?, ?, ?)'
-  ).run(randomUUID(), studentId, eventId, JSON.stringify(extraFields), new Date().toISOString())
+  ).run(newId(), studentId, eventId, JSON.stringify(extraFields), new Date().toISOString())
   return 'created'
 }
 

@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { newId } from '../ids'
 import { getDb } from './index'
 import type { EventCategory } from '../../shared/types'
 
@@ -41,7 +41,7 @@ export function createCategory(name: string, stageOrder: number | null): EventCa
   const db = getDb()
   const existing = findCategoryByName(name)
   if (existing) return existing
-  const id = randomUUID()
+  const id = newId()
   db.prepare(
     'INSERT INTO event_categories (id, name, stage_order, created_at) VALUES (?, ?, ?, ?)'
   ).run(id, name.trim(), stageOrder, new Date().toISOString())

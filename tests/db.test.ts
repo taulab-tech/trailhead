@@ -9,7 +9,10 @@ import path from 'path'
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'trailhead-test-'))
 process.env.TRAILHEAD_DB_PATH = path.join(tmpDir, 'test.db')
 
-import { closeDb, getDb, wipeDatabase } from '../src/main/db'
+import { getDb, wipeDatabase } from '../src/main/db'
+import { closeDb, openDb } from '../src/main/db/desktop'
+import { setWorkbookReader } from '../src/main/workbooks'
+import { desktopWorkbookReader } from '../src/main/workbooksDesktop'
 import { createStudent, getStudentById, listStudents, mergeStudents } from '../src/main/db/students'
 import { listPossibleDuplicates, suggestDuplicate } from '../src/main/db/duplicates'
 import { listEvents } from '../src/main/db/events'
@@ -39,6 +42,9 @@ import {
 import { updateStudent } from '../src/main/db/students'
 import { migrateLegacyDataDir } from '../src/main/dataDir'
 import { commitImport, harmonizeClasslistEventNames, parseWorkbookForPreview, previewImport } from '../src/main/importer'
+
+setWorkbookReader(desktopWorkbookReader)
+openDb()
 
 beforeEach(() => wipeDatabase())
 
@@ -132,7 +138,7 @@ test('opening an older database clears placeholder student IDs', () => {
   getDb().prepare('UPDATE students SET nsid = ? WHERE id = ?').run('n/a', placeholder)
 
   closeDb()
-  getDb()
+  openDb()
 
   assert.equal(getStudentById(placeholder)?.nsid, null)
 })
@@ -195,7 +201,7 @@ test('a wiped database has no groups, and a deleted group stays deleted after re
   const other = createCategory('Other', null)
   deleteCategory(other.id)
   closeDb()
-  getDb()
+  openDb()
 
   assert.equal(listCategories().length, 0)
 })
@@ -506,7 +512,7 @@ test('positions saved as one line are split into title and organisation on open'
   updateStudent(keensite, { position: 'CTO of KeenSite' })
 
   closeDb()
-  getDb()
+  openDb()
 
   assert.equal(getStudentById(cameco)?.position, 'PLC Programmer')
   assert.equal(getStudentById(cameco)?.positionOrg, 'Cameco')

@@ -208,25 +208,40 @@ export default function PositionLookup({
 
       {draft && !lookup && draftEditor}
 
-      <div style={{ display: 'flex', gap: 8, marginTop: draft && !lookup ? 14 : 0 }}>
-        <input
-          type="text"
-          placeholder="Extra words (optional), e.g. Saskatoon"
-          aria-label="Extra words to narrow the search"
-          value={extra}
-          onChange={(e) => setExtra(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !searching) search()
-          }}
-        />
-        <button className="btn btn-sm" onClick={search} disabled={searching}>
-          {searching ? 'Searching…' : student.position ? 'Look up again' : 'Look up on LinkedIn'}
-        </button>
-      </div>
-      <p className="position-note">
-        Searches the web for “{student.firstName} {student.lastName}” on LinkedIn — only when you click. The
-        name is added for you.
-      </p>
+      {window.api.capabilities.positionLookup ? (
+        <>
+          <div style={{ display: 'flex', gap: 8, marginTop: draft && !lookup ? 14 : 0 }}>
+            <input
+              type="text"
+              placeholder="Extra words (optional), e.g. Saskatoon"
+              aria-label="Extra words to narrow the search"
+              value={extra}
+              onChange={(e) => setExtra(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !searching) search()
+              }}
+            />
+            <button className="btn btn-sm" onClick={search} disabled={searching}>
+              {searching ? 'Searching…' : student.position ? 'Look up again' : 'Look up on LinkedIn'}
+            </button>
+          </div>
+          <p className="position-note">
+            Searches the web for “{student.firstName} {student.lastName}” on LinkedIn — only when you click.
+            The name is added for you.
+          </p>
+        </>
+      ) : (
+        !student.position &&
+        !draft && (
+          <button
+            className="btn btn-sm"
+            style={{ marginTop: 4 }}
+            onClick={() => setDraft({ title: '', org: '', since: '', url: null })}
+          >
+            Add position
+          </button>
+        )
+      )}
 
       {error && <p className="position-error">{error}</p>}
 
