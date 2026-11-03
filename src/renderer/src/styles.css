@@ -2877,3 +2877,51 @@ input[type='month'] {
 .cert-total-warn {
   font-weight: 600;
 }
+
+/* ---- Year of study column ---- */
+
+.col-sort {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.col-sort:hover {
+  color: var(--text);
+}
+
+.col-sort[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+.col-sort-mark {
+  font-size: 10px;
+}
+
+.year-label {
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.year-label.kind-unknown,
+.year-label.kind-likely_graduated {
+  color: var(--text-faint);
+}
+
+.year-label.kind-graduate {
+  color: var(--text-dim);
+}
+
+.year-basis {
+  font-size: 11px;
+  margin-top: 2px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

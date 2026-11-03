@@ -1,6 +1,8 @@
 import { newId } from '../ids'
 import { getDb } from './index'
 import { listStudentCourses } from './courses'
+import { estimateYearInProgram, readEventDate, readTermStamp } from '../yearInProgram'
+import type { YearObservation } from '../../shared/types'
 import { normalizeEmail, normalizeNsid, normalizePhone } from '../normalize'
 import type { Attendance, NewStudentInput, Student, StudentDetail } from '../../shared/types'
 
@@ -25,7 +27,83 @@ interface StudentRow {
   updated_at: string
 }
 
-function rowToStudent(row: StudentRow, emails: string[], phones: string[], attendanceCount: number): Student {
+
+/**
+ * Everything on record that said what year a student was in, and when.
+ *
+ * Gathered for every student at once rather than per row: the Students list
+ * shows this for hundreds of people, and a query each would be felt.
+ *
+ * Two sources. Class lists carry the registrar's own "Class" column against
+ * a known term, which is the reliable one. Event rosters carry whatever
+ * someone typed into "State your year within your program", against the
+ * event's date.
+ */
+function yearObservationsByStudent(studentId?: string): Map<string, YearObservation[]> {
+  const db = getDb()
+  const observations = new Map<string, YearObservation[]>()
+  const add = (id: string, observation: YearObservation): void => {
+    const list = observations.get(id)
+    if (list) list.push(observation)
+    else observations.set(id, [observation])
+  }
+
+  const where = studentId ? 'WHERE student_id = ?' : ''
+  const args = studentId ? [studentId] : []
+
+  for (const row of db
+    .prepare(`SELECT student_id, class_year, term FROM student_courses ${where}`)
+    .all(...args) as { student_id: string; class_year: string | null; term: string }[]) {
+    if (!row.class_year) continue
+    const term = readTermStamp(row.term)
+    if (!term) continue
+    add(row.student_id, {
+      raw: row.class_year,
+      academicYear: term.academicYear,
+      when: term.label,
+      source: 'classlist'
+    })
+  }
+
+  const eventWhere = studentId ? 'WHERE a.student_id = ?' : ''
+  for (const row of db
+    .prepare(
+      `SELECT a.student_id, a.extra_fields, e.date
+       FROM attendances a JOIN events e ON e.id = a.event_id
+       ${eventWhere}`
+    )
+    .all(...args) as { student_id: string; extra_fields: string | null; date: string | null }[]) {
+    if (!row.extra_fields) continue
+    const when = readEventDate(row.date)
+    if (!when) continue
+
+    let fields: Record<string, string>
+    try {
+      fields = JSON.parse(row.extra_fields) as Record<string, string>
+    } catch {
+      continue
+    }
+    for (const [column, value] of Object.entries(fields)) {
+      if (!value || !/year/i.test(column)) continue
+      add(row.student_id, {
+        raw: value,
+        academicYear: when.academicYear,
+        when: when.label,
+        source: 'event'
+      })
+    }
+  }
+
+  return observations
+}
+
+function rowToStudent(
+  row: StudentRow,
+  emails: string[],
+  phones: string[],
+  attendanceCount: number,
+  observations: YearObservation[] = []
+): Student {
   return {
     id: row.id,
     firstName: row.first_name,
@@ -47,8 +125,30 @@ function rowToStudent(row: StudentRow, emails: string[], phones: string[], atten
     updatedAt: row.updated_at,
     emails,
     phones,
-    attendanceCount
+    attendanceCount,
+    currentYear: estimateYearInProgram(
+      // The stored value has no date on it, so it can only be believed as-is.
+      observations.length > 0
+        ? observations
+        : row.year_in_program
+          ? [
+              {
+                raw: row.year_in_program,
+                academicYear: academicYearOfNow(),
+                when: 'date unknown',
+                source: 'event' as const,
+                dated: false
+              }
+            ]
+          : []
+    )
   }
+}
+
+/** The academic year we are in right now. */
+function academicYearOfNow(): number {
+  const now = new Date()
+  return now.getMonth() + 1 >= 9 ? now.getFullYear() : now.getFullYear() - 1
 }
 
 export function getStudentEmails(studentId: string): string[] {
@@ -79,7 +179,13 @@ export function getStudentById(id: string): Student | null {
   const db = getDb()
   const row = db.prepare('SELECT * FROM students WHERE id = ?').get(id) as StudentRow | undefined
   if (!row) return null
-  return rowToStudent(row, getStudentEmails(id), getStudentPhones(id), getAttendanceCount(id))
+  return rowToStudent(
+    row,
+    getStudentEmails(id),
+    getStudentPhones(id),
+    getAttendanceCount(id),
+    yearObservationsByStudent(id).get(id) ?? []
+  )
 }
 
 export function getStudentDetail(id: string): StudentDetail | null {
@@ -139,8 +245,15 @@ export function listStudents(search?: string): Student[] {
   } else {
     rows = db.prepare('SELECT * FROM students ORDER BY last_name, first_name').all() as StudentRow[]
   }
+  const observations = yearObservationsByStudent()
   return rows.map((row) =>
-    rowToStudent(row, getStudentEmails(row.id), getStudentPhones(row.id), getAttendanceCount(row.id))
+    rowToStudent(
+      row,
+      getStudentEmails(row.id),
+      getStudentPhones(row.id),
+      getAttendanceCount(row.id),
+      observations.get(row.id) ?? []
+    )
   )
 }
 

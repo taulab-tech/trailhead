@@ -22,6 +22,12 @@ export interface Student {
   emails: string[]
   phones: string[]
   attendanceCount: number
+  /**
+   * What year they are in now. Worked out on every read from the most recent
+   * dated observation, never stored — a stored answer goes stale every
+   * September without anyone noticing.
+   */
+  currentYear: YearEstimate
 }
 
 export interface StudentDetail extends Student {
@@ -50,6 +56,8 @@ export interface StudentCourse {
   grade: string | null
   regStatus: string | null
   status: CourseStatus
+  /** Year of study as recorded on this roster, e.g. "Fourth Year". */
+  classYear: string | null
   sourceFile: string | null
 }
 
@@ -426,4 +434,40 @@ export interface CertificateRosterEntry {
   complete: boolean
   declared: boolean
   missing: string[]
+}
+
+/* --------------------------- Year of study ------------------------------ */
+
+/** Something that said what year a student was in, and when it said it. */
+export interface YearObservation {
+  /** As written: "Fourth Year", "2nd year", "PhD". */
+  raw: string
+  /** The academic year it was observed in; Winter 2026 counts as 2025. */
+  academicYear: number
+  /** For display, e.g. "Fall 2024". */
+  when: string
+  /** The registrar is believed over a self-reported form answer. */
+  source: 'classlist' | 'event'
+  /**
+   * False for a value held on the student record with nothing saying when
+   * it was true. It still beats knowing nothing, but it can't be advanced
+   * and shouldn't be presented as current.
+   */
+  dated?: boolean
+}
+
+export type YearKind = 'year' | 'graduate' | 'likely_graduated' | 'unknown'
+
+/** What year a student is in now, worked out from the most recent observation. */
+export interface YearEstimate {
+  kind: YearKind
+  /** 1-5 when `kind` is "year". */
+  year: number | null
+  label: string
+  /** For sorting: 1-5 by year, then graduate, likely graduated, unknown. */
+  ordinal: number
+  /** What it was worked out from, e.g. "Fourth Year, Fall 2024". */
+  basis: string | null
+  /** True when the observation is from this academic year, so nothing was inferred. */
+  current: boolean
 }

@@ -102,6 +102,11 @@ CREATE TABLE IF NOT EXISTS student_courses (
   grade TEXT,
   reg_status TEXT,
   status TEXT NOT NULL,
+  -- The student's year of study as the registrar recorded it at the time
+  -- ("Fourth Year"). Kept per course rather than only on the student record,
+  -- because it is the pairing with the term that makes it possible to work
+  -- out what year they are in now.
+  class_year TEXT,
   source_file TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
@@ -215,6 +220,11 @@ function migrateSchema(db: SqlDriver): void {
       db.exec(`ALTER TABLE students ADD COLUMN ${column} TEXT`)
     }
   }
+  const courseColumns = db.prepare('PRAGMA table_info(student_courses)').all() as { name: string }[]
+  if (courseColumns.length > 0 && !courseColumns.some((c) => c.name === 'class_year')) {
+    db.exec('ALTER TABLE student_courses ADD COLUMN class_year TEXT')
+  }
+
   splitCombinedPositions(db)
 
   renormalizeNsids(db)

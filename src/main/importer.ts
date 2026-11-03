@@ -601,6 +601,12 @@ function runSheetImport(
       for (const col of ignoredColumns) {
         if (row[col]) extraFields[col] = row[col]
       }
+      // The year-of-study answer is kept with the attendance as well as on
+      // the student record. On its own the record says "2nd year" with no
+      // date attached, which is unusable a year later; here it is pinned to
+      // the event it was given at, which is what makes it possible to say
+      // what year they are in now.
+      if (yearCol && row[yearCol]) extraFields[yearCol] = row[yearCol]
 
       const { studentId, created } = matchStudent({
         firstName: firstName || '(Unknown)',
@@ -631,6 +637,7 @@ function runSheetImport(
           grade: enrolment.grade,
           regStatus: enrolment.regStatus,
           status: enrolment.status,
+          classYear: enrolment.classYear,
           sourceFile: request.fileName
         })
       }

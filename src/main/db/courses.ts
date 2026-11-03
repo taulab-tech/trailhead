@@ -20,6 +20,7 @@ interface CourseRow {
   grade: string | null
   reg_status: string | null
   status: string
+  class_year: string | null
   source_file: string | null
   created_at: string
   updated_at: string
@@ -36,6 +37,7 @@ function toCourse(row: CourseRow): StudentCourse {
     grade: row.grade,
     regStatus: row.reg_status,
     status: row.status as CourseStatus,
+    classYear: row.class_year,
     sourceFile: row.source_file
   }
 }
@@ -49,6 +51,7 @@ export interface RecordCourseInput {
   grade?: string | null
   regStatus?: string | null
   status: CourseStatus
+  classYear?: string | null
   sourceFile?: string | null
 }
 
@@ -63,16 +66,17 @@ export function recordStudentCourse(input: RecordCourseInput): void {
     .prepare(
       `INSERT INTO student_courses
          (id, student_id, course_code, term, term_label, credit_units, grade,
-          reg_status, status, source_file, created_at, updated_at)
+          reg_status, status, class_year, source_file, created_at, updated_at)
        VALUES
          (@id, @studentId, @courseCode, @term, @termLabel, @creditUnits, @grade,
-          @regStatus, @status, @sourceFile, @now, @now)
+          @regStatus, @status, @classYear, @sourceFile, @now, @now)
        ON CONFLICT(student_id, course_code, term) DO UPDATE SET
          term_label   = excluded.term_label,
          credit_units = excluded.credit_units,
          grade        = excluded.grade,
          reg_status   = excluded.reg_status,
          status       = excluded.status,
+         class_year   = excluded.class_year,
          source_file  = excluded.source_file,
          updated_at   = excluded.updated_at`
     )
@@ -86,6 +90,7 @@ export function recordStudentCourse(input: RecordCourseInput): void {
       grade: input.grade ?? null,
       regStatus: input.regStatus ?? null,
       status: input.status,
+      classYear: input.classYear ?? null,
       sourceFile: input.sourceFile ?? null,
       now
     })
