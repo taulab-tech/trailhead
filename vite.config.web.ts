@@ -53,16 +53,30 @@ self.addEventListener('activate', (event) => {
   )
 })
 
+const SHELL = ${JSON.stringify(base)}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return
 
-  // Navigations always resolve to the app shell; everything else is served
-  // from the cache when it's there and fetched when it isn't.
+  // The page itself is fetched from the network first, so a deploy is picked
+  // up the next time someone opens the app rather than a reload later. The
+  // cached copy is the offline fallback.
   if (request.mode === 'navigate') {
-    event.respondWith(caches.match(${JSON.stringify(base)}).then((hit) => hit ?? fetch(request)))
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone()
+          event.waitUntil(caches.open(CACHE).then((cache) => cache.put(SHELL, copy)))
+          return response
+        })
+        .catch(() => caches.match(SHELL).then((hit) => hit ?? Response.error()))
+    )
     return
   }
+
+  // Everything else is a build asset whose name carries a content hash, so a
+  // cached copy can never be the wrong one.
   event.respondWith(caches.match(request).then((hit) => hit ?? fetch(request)))
 })
 `
