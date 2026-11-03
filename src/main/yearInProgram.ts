@@ -11,8 +11,15 @@ import type { YearEstimate, YearObservation } from '../shared/types'
  * would be wrong from the first of September and nobody would notice.
  */
 
-/** Beyond this, someone has almost certainly finished. */
-const LONGEST_PROGRAMME = 5
+/**
+ * Beyond this, someone has finished.
+ *
+ * Four, because the programme is four years: across every registrar class
+ * list on file the "Class" column only ever reads First, Second, Third or
+ * Fourth Year — there is no fifth. So somebody who was in first year in
+ * 2020 is not a fifth-year student in 2025, they are an alum.
+ */
+const LONGEST_PROGRAMME = 4
 
 const WORD_YEARS: Record<string, number> = {
   first: 1,
@@ -147,7 +154,7 @@ export function estimateYearInProgram(
   const estimated = parsed + elapsed
 
   if (estimated > LONGEST_PROGRAMME) {
-    return { kind: 'likely_graduated', year: null, label: 'Likely graduated', ordinal: 7, basis, current: false }
+    return { kind: 'likely_graduated', year: null, label: 'Likely finished', ordinal: 7, basis, current: false }
   }
 
   return {

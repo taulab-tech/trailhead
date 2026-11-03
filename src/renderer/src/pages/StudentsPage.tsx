@@ -45,14 +45,21 @@ export default function StudentsPage({
   const [loading, setLoading] = useState(true)
 
   const alumniView = view === 'alumni'
+  /**
+   * Somebody is an alum if they have been marked as one, or if they would
+   * now be past the end of a four-year programme. The second kind is the
+   * point of the split: what is left in Students is who is still in the
+   * programme, which is who there is any sense in contacting.
+   */
+  const hasFinished = (s: Student): boolean => s.isAlumni || s.currentYear.kind === 'likely_graduated'
   // The last file saved belongs to the list it came from.
   useEffect(() => setExported(null), [view, yearFilter, search])
-  const alumniCount = students.filter((s) => s.isAlumni).length
+  const alumniCount = students.filter(hasFinished).length
 
   const visible = useMemo(() => {
     // Students and Alumni are two views of one list, so somebody who came to
     // a hackathon in 2019 and graduated in 2021 stays one person.
-    const inView = students.filter((s) => s.isAlumni === alumniView)
+    const inView = students.filter((s) => hasFinished(s) === alumniView)
     const filtered =
       yearFilter === 'all'
         ? inView
@@ -124,8 +131,7 @@ export default function StudentsPage({
         <div>
           <h1>Students</h1>
           <p>
-            {students.length - alumniCount} student{students.length - alumniCount === 1 ? '' : 's'} and{' '}
-            {alumniCount} alum{alumniCount === 1 ? '' : 'ni'} on file
+            {students.length - alumniCount} still in the programme, {alumniCount} finished
           </p>
         </div>
       </div>
@@ -185,9 +191,7 @@ export default function StudentsPage({
             <option value="2">Year 2</option>
             <option value="3">Year 3</option>
             <option value="4">Year 4</option>
-            <option value="5">Year 5</option>
             <option value="graduate">Graduate students</option>
-            <option value="graduated">Likely graduated</option>
             <option value="unknown">Year unknown</option>
           </select>
           )}
@@ -206,7 +210,7 @@ export default function StudentsPage({
           ) : visible.length === 0 ? (
             <div className="empty-state">
               {alumniView
-                ? 'No alumni yet. Tick “Everyone on this sheet is an alum” when importing a cohort list, or mark somebody on their record.'
+                ? 'Nobody has finished yet. People appear here once they are past four years, or when you mark them on their record.'
                 : 'No students in that year.'}
             </div>
           ) : (
@@ -254,7 +258,14 @@ export default function StudentsPage({
                     </td>
                     <td>
                       {alumniView ? (
-                        <span className="year-label">{s.cohortYear ?? '—'}</span>
+                        <>
+                          <span className="year-label">{s.cohortYear ?? '—'}</span>
+                          {!s.isAlumni && (
+                            <div className="text-faint year-basis" title={s.currentYear.basis ?? undefined}>
+                              estimated, not marked
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <>
                           <span className={`year-label kind-${s.currentYear.kind}`}>

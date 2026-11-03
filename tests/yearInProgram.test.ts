@@ -100,11 +100,22 @@ test('a year observed earlier is advanced by the years since', () => {
   assert.equal(estimate.basis, 'Second Year, Fall 2024')
 })
 
-test('someone who would be past the longest programme reads as likely graduated', () => {
-  const estimate = estimateYearInProgram([observed('Fourth Year', 2022)], IN_2026_27)
+test('the programme is four years, so a fifth would have finished', () => {
+  // The registrar's "Class" column never reads beyond Fourth Year on any
+  // class list on file, so there is no fifth year to be in.
+  assert.equal(estimateYearInProgram([observed('Fourth Year', 2026)], IN_2026_27).year, 4)
+
+  const oneYearOn = estimateYearInProgram([observed('Fourth Year', 2025)], IN_2026_27)
+  assert.equal(oneYearOn.kind, 'likely_graduated')
+  assert.equal(oneYearOn.year, null)
+  assert.equal(oneYearOn.ordinal, 7)
+})
+
+test('somebody who started six years ago has finished, not stalled', () => {
+  // A first year in 2020-21 is not a sixth-year student in 2026-27.
+  const estimate = estimateYearInProgram([observed('First Year', 2020)], IN_2026_27)
   assert.equal(estimate.kind, 'likely_graduated')
-  assert.equal(estimate.year, null)
-  assert.equal(estimate.ordinal, 7)
+  assert.equal(estimate.basis, 'First Year, Fall 2020')
 })
 
 test('a graduate student stays a graduate student', () => {

@@ -6,3 +6,8 @@ dist
 .DS_Store
 python-runtime
 dist-web
+
+# Never commit a database — they hold real student records.
+*.db
+*.db-wal
+*.db-shm
