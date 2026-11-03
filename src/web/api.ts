@@ -77,14 +77,14 @@ export const webApi = {
     await loadWorkbook(ref)
     return parseWorkbookForPreview(ref)
   },
+  // The sheet is loaded even when the review screen has supplied edited
+  // rows: a class list's course details live above the table, not in it.
   previewImportRows: async (request: ImportSheetRequest) => {
-    // Edited rows come straight from the review screen; only an unedited
-    // import still needs the original sheet.
-    if (!request.rows) await loadWorkbook(request.filePath)
+    await loadWorkbook(request.filePath)
     return previewImport(request)
   },
   commitImport: async (request: ImportSheetRequest) => {
-    if (!request.rows) await loadWorkbook(request.filePath)
+    await loadWorkbook(request.filePath)
     const result = commitImport(request)
     await save()
     return result

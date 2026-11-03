@@ -1,5 +1,6 @@
 import { newId } from '../ids'
 import { getDb } from './index'
+import { listStudentCourses } from './courses'
 import { normalizeEmail, normalizeNsid, normalizePhone } from '../normalize'
 import type { Attendance, NewStudentInput, Student, StudentDetail } from '../../shared/types'
 
@@ -114,7 +115,7 @@ export function getStudentDetail(id: string): StudentDetail | null {
     createdAt: r.created_at
   }))
 
-  return { ...student, attendances }
+  return { ...student, attendances, courses: listStudentCourses(id) }
 }
 
 export function listStudents(search?: string): Student[] {
@@ -380,6 +381,29 @@ export function mergeStudents(keepId: string, mergeId: string): void {
         db.prepare('UPDATE attendances SET student_id = ? WHERE id = ?').run(keepId, a.id)
       } else {
         db.prepare('DELETE FROM attendances WHERE id = ?').run(a.id)
+      }
+    }
+
+    // Course records are unique per (student, course, term), so a clash means
+    // both records hold the same course in the same term. The surviving one
+    // is kept unless it has no grade and the other does — which happens when
+    // one record came from an older export taken before marks were posted.
+    const courses = db
+      .prepare('SELECT id, course_code, term, grade FROM student_courses WHERE student_id = ?')
+      .all(mergeId) as { id: string; course_code: string; term: string; grade: string | null }[]
+    for (const c of courses) {
+      const clash = db
+        .prepare(
+          'SELECT id, grade FROM student_courses WHERE student_id = ? AND course_code = ? AND term = ?'
+        )
+        .get(keepId, c.course_code, c.term) as { id: string; grade: string | null } | undefined
+      if (!clash) {
+        db.prepare('UPDATE student_courses SET student_id = ? WHERE id = ?').run(keepId, c.id)
+      } else if (!clash.grade && c.grade) {
+        db.prepare('DELETE FROM student_courses WHERE id = ?').run(clash.id)
+        db.prepare('UPDATE student_courses SET student_id = ? WHERE id = ?').run(keepId, c.id)
+      } else {
+        db.prepare('DELETE FROM student_courses WHERE id = ?').run(c.id)
       }
     }
 

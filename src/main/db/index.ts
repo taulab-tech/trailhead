@@ -88,6 +88,27 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS student_courses (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  course_code TEXT NOT NULL,
+  -- The registrar's term stamp ("202509"). Empty rather than NULL so the
+  -- unique index below actually catches a re-import: in SQLite two NULLs
+  -- are never equal, so a nullable column wouldn't dedupe.
+  term TEXT NOT NULL DEFAULT '',
+  term_label TEXT,
+  credit_units REAL,
+  grade TEXT,
+  reg_status TEXT,
+  status TEXT NOT NULL,
+  source_file TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(student_id, course_code, term)
+);
+CREATE INDEX IF NOT EXISTS idx_student_courses_student ON student_courses(student_id);
+CREATE INDEX IF NOT EXISTS idx_student_courses_code ON student_courses(course_code);
 `
 
 /**
@@ -183,7 +204,8 @@ function renormalizeNsids(db: SqlDriver): void {
 export function wipeDatabase(): void {
   const db = getDb()
   const tx = db.transaction(() => {
-    // Cascades take care of student_emails/phones, attendances, and possible_duplicates.
+    // Cascades take care of student_emails/phones, attendances,
+    // student_courses and possible_duplicates.
     db.exec('DELETE FROM students')
     db.exec('DELETE FROM events')
     db.exec('DELETE FROM event_categories')

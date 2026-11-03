@@ -2497,3 +2497,63 @@ input[type='month'] {
   vertical-align: 3px;
   opacity: 0.7;
 }
+
+/* ---- Courses on a student record ---- */
+
+.course-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.course-row td {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+}
+
+.course-row:last-child td {
+  border-bottom: none;
+}
+
+.course-code {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.course-term {
+  color: var(--text-dim);
+  padding-left: 12px;
+}
+
+.course-grade {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  text-align: right;
+  padding-right: 12px;
+}
+
+.course-status {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.course-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg-elevated-2);
+  color: var(--text-dim);
+}
+
+.course-pill.status-completed {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.course-pill.status-in_progress {
+  background: var(--warn-soft);
+  color: var(--warn);
+}

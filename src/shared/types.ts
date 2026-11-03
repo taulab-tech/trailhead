@@ -26,6 +26,31 @@ export interface Student {
 
 export interface StudentDetail extends Student {
   attendances: Attendance[]
+  courses: StudentCourse[]
+}
+
+/**
+ * Where a student stands in one course. `audited` is kept apart from the
+ * rest because an audited course earns no credit, so it counts towards no
+ * certificate however good the mark.
+ */
+export type CourseStatus = 'completed' | 'in_progress' | 'audited' | 'not_completed'
+
+/** One student's record in one course, in one term. */
+export interface StudentCourse {
+  id: string
+  studentId: string
+  /** Subject and number, e.g. "GE 495". */
+  courseCode: string
+  /** The registrar's term stamp, e.g. "202509". */
+  term: string | null
+  /** The term as written, e.g. "2025 Fall Term". */
+  termLabel: string | null
+  creditUnits: number | null
+  grade: string | null
+  regStatus: string | null
+  status: CourseStatus
+  sourceFile: string | null
 }
 
 export interface EventCategory {
@@ -87,6 +112,16 @@ export interface ParsedSheet {
   suggestedMapping: ColumnMapping
   /** Set when suggestedMapping flags a year column with 2+ distinct years — this sheet will split into one event per year on import. */
   yearSplitPreview: { column: string; years: number[] } | null
+  /** Set when this sheet is a registrar class list, so the import also records who took the course. */
+  course: ParsedCourse | null
+}
+
+/** The course a class list is a roster for. */
+export interface ParsedCourse {
+  code: string
+  title: string | null
+  term: string | null
+  termLabel: string | null
 }
 
 export interface ParsedWorkbook {

@@ -7,6 +7,14 @@ import { findCategoryByName } from './db/categories'
 import { detectFuzzyDuplicates, matchStudent } from './matching'
 import { normalizeEmail, normalizePhone, titleCase } from './normalize'
 import { enrolDateFor, parseEnrolTerm, parseEnrolYear, parseYearMonthStamp } from './enrolDate'
+import {
+  hasClasslistColumns,
+  meaningfulValue,
+  readClasslistCourse,
+  readCourseEnrolment,
+  type ClasslistCourse
+} from './classlist'
+import { recordStudentCourse } from './db/courses'
 import type {
   ColumnMapping,
   ImportEventSummary,
@@ -358,6 +366,37 @@ function deriveEventName(sheetName: string, fileName: string): string {
   return sheetName.trim()
 }
 
+/**
+ * Reads the course a sheet is a roster for, or null if it isn't one.
+ *
+ * Both halves have to agree: the block above the table has to name a course,
+ * and the table itself has to have the registrar's columns. A sheet with
+ * only one of those is some other spreadsheet and goes down the ordinary
+ * attendance path.
+ */
+function classlistCourseFor(
+  ws: XLSX.WorkSheet,
+  headers: string[],
+  fileName: string
+): ClasslistCourse | null {
+  if (!hasClasslistColumns(headers)) return null
+  const ref = ws['!ref']
+  if (!ref) return null
+  const range = XLSX.utils.decode_range(ref)
+  return readClasslistCourse(ws, findHeaderRow(ws, range), fileName, classlistCourseCode(fileName))
+}
+
+/**
+ * On a class list the "Class" column is the student's year of study
+ * ("Fourth Year"), which the generic header matching has no way to know —
+ * the word on its own means too many things.
+ */
+function applyClasslistMapping(headers: string[], mapping: ColumnMapping): void {
+  if (Object.values(mapping).includes('yearInProgram')) return
+  const classColumn = headers.find((h) => h.toLowerCase().trim() === 'class')
+  if (classColumn) mapping[classColumn] = 'yearInProgram'
+}
+
 export function parseWorkbookForPreview(filePath: string): ParsedWorkbook {
   const fileName = workbookBaseName(filePath)
   const workbook = readWorkbook(filePath)
@@ -370,7 +409,9 @@ export function parseWorkbookForPreview(filePath: string): ParsedWorkbook {
 
     const suggestedEventName = deriveEventName(sheetName, fileName)
     const suggestedCategoryId = guessCategory(suggestedEventName, sheetName, fileName)
+    const course = classlistCourseFor(ws, headers, fileName)
     const suggestedMapping = detectMapping(headers, rows)
+    if (course) applyClasslistMapping(headers, suggestedMapping)
     sheets.push({
       sheetName,
       suggestedEventName,
@@ -381,7 +422,13 @@ export function parseWorkbookForPreview(filePath: string): ParsedWorkbook {
       sampleRows: rows.slice(0, 5),
       rows,
       suggestedMapping,
-      yearSplitPreview: yearSplitPreview(headers, rows, suggestedMapping)
+      yearSplitPreview: yearSplitPreview(headers, rows, suggestedMapping),
+      course: course && {
+        code: course.code,
+        title: course.title,
+        term: course.term || null,
+        termLabel: course.termLabel
+      }
     })
   }
 
@@ -418,15 +465,27 @@ function runSheetImport(
   // sheet is read fresh from the file. The mapping always lists every header.
   let headers: string[]
   let rows: Record<string, string>[]
+  let worksheet: XLSX.WorkSheet | undefined
   if (request.rows) {
     headers = Object.keys(request.mapping)
     rows = request.rows
+    // The rows came from the review screen, but the course still has to be
+    // read off the sheet itself. Losing the file here only costs the course
+    // record, so it isn't worth failing the import over.
+    try {
+      worksheet = readWorkbook(request.filePath).Sheets[request.sheetName]
+    } catch {
+      worksheet = undefined
+    }
   } else {
     const workbook = readWorkbook(request.filePath)
     const ws = workbook.Sheets[request.sheetName]
     if (!ws) throw new Error(`Sheet "${request.sheetName}" not found in ${request.fileName}`)
+    worksheet = ws
     ;({ headers, rows } = parseSheet(ws))
   }
+
+  const course = worksheet ? classlistCourseFor(worksheet, headers, request.fileName) : null
 
   const emailColumns = headers.filter((h) => request.mapping[h] === 'email')
   const phoneColumns = headers.filter((h) => request.mapping[h] === 'phone')
@@ -553,12 +612,28 @@ function runSheetImport(
         discipline: disciplineCol ? row[disciplineCol] : null,
         degree: degreeCol ? row[degreeCol] : null,
         program: programCol ? row[programCol] : null,
-        yearInProgram: yearCol ? row[yearCol] : null,
+        // Registrar exports write "Not Available" where a student's year
+        // isn't known; that must not land on the record as if it were one.
+        yearInProgram: yearCol ? meaningfulValue(row[yearCol]) : null,
         enrolTerm: yearCol ? parseEnrolTerm(row[yearCol]) : null
       })
 
       const { eventId, eventName } = eventIdForRow(yearCol ? row[yearCol] : null)
       addAttendance(studentId, eventId, extraFields)
+      if (course) {
+        const enrolment = readCourseEnrolment(headers, row)
+        recordStudentCourse({
+          studentId,
+          courseCode: course.code,
+          term: course.term,
+          termLabel: course.termLabel,
+          creditUnits: enrolment.creditUnits,
+          grade: enrolment.grade,
+          regStatus: enrolment.regStatus,
+          status: enrolment.status,
+          sourceFile: request.fileName
+        })
+      }
       touchedIds.add(studentId)
       rowsProcessed++
 

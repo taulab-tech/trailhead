@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import type { AttendanceDate, EventCategory, EventRecord, Student, StudentDetail } from '../../../shared/types'
 import PositionLookup from './PositionLookup'
+import StudentCourses from './StudentCourses'
 import JourneyTimeline from './JourneyTimeline'
 import { buildJourneys, trailStages } from '../../../shared/journeys'
 import { colorForIndex } from '../lib/palette'
@@ -228,6 +229,8 @@ export default function StudentDetailDrawer({
             onChanged()
           }}
         />
+
+        <StudentCourses courses={detail.courses} />
 
         <div className="section-title">Path ({detail.attendances.length} event{detail.attendances.length === 1 ? '' : 's'})</div>
         <JourneyTimeline
