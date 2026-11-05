@@ -129,7 +129,9 @@ export default function StartGate({ onOpened }: { onOpened: () => void }): React
           </button>
         </div>
 
-        <p className="gate-hint">or drop a .db file here</p>
+        <p className="gate-hint">
+          or drop a .db file here &mdash; spreadsheets go on the Import screen, once a database is open
+        </p>
 
         {recovery && (
           <div className="gate-recovery">

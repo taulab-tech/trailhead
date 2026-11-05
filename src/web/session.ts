@@ -152,7 +152,14 @@ async function start(bytes: Uint8Array | undefined, fileName: string, fileHandle
   const opened = await openWebDatabase(bytes)
   if (bytes && !looksLikeTrailheadDb(opened)) {
     opened.close()
-    throw new Error('That file does not look like a Trailhead database.')
+    // Dropping a roster on the start screen is an easy mistake: this is
+    // where files go in, just not that kind. Say where it does belong
+    // rather than only that it is wrong.
+    throw new Error(
+      /\.(xlsx|xls|csv)$/i.test(fileName)
+        ? `${fileName} is a spreadsheet, not a database. Open or start a database first, then add it on the Import screen.`
+        : 'That file does not look like a Trailhead database.'
+    )
   }
 
   setDbDriver(opened)
