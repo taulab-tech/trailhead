@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import type { PositionCandidate, PositionSearchResult, Student } from '../../../shared/types'
 import { formatSince } from '../lib/positions'
 import { namesSwapped, suggestedPosition } from '../../../shared/positions'
+import { buildPositionQuery } from '../../../main/positionLookup'
 
 function safeUrl(url: string | null): string | null {
   return url && /^https:\/\//i.test(url) ? url : null
@@ -146,7 +147,17 @@ export default function PositionLookup({
           .
         </p>
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div>
+        <label htmlFor="position-url">LinkedIn address (optional)</label>
+        <input
+          id="position-url"
+          type="url"
+          placeholder="https://www.linkedin.com/in/…"
+          value={draft.url ?? ''}
+          onChange={(e) => setDraft({ ...draft, url: e.target.value.trim() || null })}
+        />
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
         <button className="btn btn-primary btn-sm" disabled={!draft.title.trim()} onClick={saveDraft}>
           Save position
         </button>
@@ -231,15 +242,43 @@ export default function PositionLookup({
           </p>
         </>
       ) : (
-        !student.position &&
         !draft && (
-          <button
-            className="btn btn-sm"
-            style={{ marginTop: 4 }}
-            onClick={() => setDraft({ title: '', org: '', since: '', url: null })}
-          >
-            Add position
-          </button>
+          <>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <input
+                type="text"
+                placeholder="Extra words (optional), e.g. Saskatoon"
+                aria-label="Extra words to narrow the search"
+                value={extra}
+                onChange={(e) => setExtra(e.target.value)}
+              />
+              <button
+                className="btn btn-sm"
+                onClick={() =>
+                  window.open(
+                    `https://duckduckgo.com/?q=${encodeURIComponent(
+                      buildPositionQuery(student.firstName, student.lastName, extra.trim())
+                    )}`,
+                    '_blank',
+                    'noopener,noreferrer'
+                  )
+                }
+              >
+                Search LinkedIn ↗
+              </button>
+              <button
+                className="btn btn-sm"
+                onClick={() => setDraft({ title: '', org: '', since: '', url: null })}
+              >
+                {student.position ? 'Edit' : 'Add position'}
+              </button>
+            </div>
+            <p className="position-note">
+              Opens the search in a new tab for you to look through, then paste what you find back
+              here. The web version can&rsquo;t search for you: a page can only read a reply from a
+              site that allows it, and search engines don&rsquo;t.
+            </p>
+          </>
         )
       )}
 
