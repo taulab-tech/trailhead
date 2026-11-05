@@ -144,6 +144,7 @@ const api = {
     ipcRenderer.invoke('settings:setLookupHelperUrl', url),
   checkLookupHelper: (url: string): Promise<boolean> =>
     ipcRenderer.invoke('settings:checkLookupHelper', url),
+  lookupAvailable: (): Promise<boolean> => ipcRenderer.invoke('settings:lookupAvailable'),
 
   backupDatabase: (): Promise<string | null> => ipcRenderer.invoke('db:backup'),
   restoreDatabase: (): Promise<string | null> => ipcRenderer.invoke('db:restore'),

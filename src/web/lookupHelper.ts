@@ -16,6 +16,9 @@ import type { RawResult } from '../main/positionLookup'
 
 const TIMEOUT_MS = 30_000
 
+/** Where the helper listens unless somebody has moved it. */
+export const DEFAULT_HELPER_URL = 'http://127.0.0.1:8765'
+
 interface HelperReply {
   results?: RawResult[]
   error?: string
@@ -58,4 +61,20 @@ export function helperSearch(baseUrl: string) {
     }
     return reply.results ?? []
   }
+}
+
+/**
+ * Finds the helper without anybody having to set it up.
+ *
+ * If it is running where it normally runs, the app should just use it —
+ * making someone paste an address into Settings to enable something that
+ * is already listening is a step for no reason. The setting is still there
+ * for a helper on a different port.
+ */
+export async function detectHelper(configured: string | null): Promise<string | null> {
+  const candidates = configured ? [configured] : [DEFAULT_HELPER_URL]
+  for (const url of candidates) {
+    if (await helperIsRunning(url)) return url
+  }
+  return null
 }

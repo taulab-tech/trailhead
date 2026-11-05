@@ -47,10 +47,8 @@ export default function PositionLookup({
   const [canSearch, setCanSearch] = useState(window.api.capabilities.positionLookup)
 
   useEffect(() => {
-    window.api.getSettings().then((s) => {
-      setHasInstitution(s.institutionNames.length > 0)
-      setCanSearch(window.api.capabilities.positionLookup || !!s.lookupHelperUrl)
-    })
+    window.api.getSettings().then((s) => setHasInstitution(s.institutionNames.length > 0))
+    window.api.lookupAvailable().then(setCanSearch)
   }, [])
 
   const search = async (): Promise<void> => {
@@ -280,9 +278,10 @@ export default function PositionLookup({
               </button>
             </div>
             <p className="position-note">
-              Opens the search in a new tab for you to look through, then paste what you find back
-              here. The web version can&rsquo;t search for you: a page can only read a reply from a
-              site that allows it, and search engines don&rsquo;t.
+              Opens the search in a new tab for you to read, then paste what you find back here. To
+              get the results in here instead, start the lookup helper on this computer
+              (<code>python trailhead_lookup.py</code>) &mdash; the app finds it on its own, no
+              setting up.
             </p>
           </>
         )

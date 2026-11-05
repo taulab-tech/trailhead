@@ -159,8 +159,9 @@ async function start(bytes: Uint8Array | undefined, fileName: string, fileHandle
   setWorkbookReader(browserWorkbookReader)
   initializeDatabase(opened)
   seedCertificatesIfEmpty()
-  // Whether the lookup is offered depends on a setting inside this file.
-  refreshLookupCapability()
+  // Look for the helper in the background; the screens ask again when
+  // somebody actually wants a lookup.
+  void refreshLookupCapability()
   opened.watch(onDatabaseChanged)
 
   db = opened

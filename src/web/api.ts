@@ -30,7 +30,7 @@ import {
   startLookups,
   stopLookups
 } from '../main/lookupQueue'
-import { helperIsRunning, helperSearch } from './lookupHelper'
+import { detectHelper, helperIsRunning, helperSearch } from './lookupHelper'
 import { markFieldsManual } from '../main/db/fieldSources'
 import {
   addRequirement,
@@ -92,20 +92,25 @@ const NO_LOOKUPS: LookupStatus = {
  * Points the lookup at the helper, if one is set up. Returns false when
  * there is none, which is how every lookup call decides whether to run.
  */
+/** The helper we found, if any. Re-checked whenever a lookup is asked for. */
+let helperUrl: string | null = null
+
 function searchIsReady(): boolean {
-  const { lookupHelperUrl } = getSettings()
-  webApi.capabilities.positionLookup = !!lookupHelperUrl
-  if (!lookupHelperUrl) return false
-  setSearchTransport(helperSearch(lookupHelperUrl))
+  if (!helperUrl) return false
+  setSearchTransport(helperSearch(helperUrl))
   return true
 }
 
 /**
- * Whether the screens should offer the lookup at all. Read once a database
- * is open, since the answer is a setting inside it.
+ * Looks for the helper and tells the screens whether to offer the lookup.
+ *
+ * Run when a database is opened and again whenever somebody asks for a
+ * lookup, so starting the helper mid-session is picked up without a reload.
  */
-export function refreshLookupCapability(): void {
-  searchIsReady()
+export async function refreshLookupCapability(): Promise<boolean> {
+  helperUrl = await detectHelper(getSettings().lookupHelperUrl)
+  webApi.capabilities.positionLookup = helperUrl !== null
+  return helperUrl !== null
 }
 
 function lookupsUnavailable(): never {
@@ -164,7 +169,8 @@ export const webApi = {
   removeAttendance: async (attendanceId: string) => removeAttendance(attendanceId),
   mergeStudents: async (keepId: string, mergeId: string) => mergeStudents(keepId, mergeId),
   findPosition: async (studentId: string, extraTerms?: string): Promise<PositionSearchResult> => {
-    if (!searchIsReady()) lookupsUnavailable()
+    if (!searchIsReady() && !(await refreshLookupCapability())) lookupsUnavailable()
+    searchIsReady()
     const student = getStudentById(studentId)
     if (!student) throw new Error('Student not found')
     return lookUpPosition(student.firstName, student.lastName, extraTerms, getSettings().institutionNames)
@@ -172,11 +178,13 @@ export const webApi = {
 
   setLookupHelperUrl: async (url: string | null) => {
     const saved = setLookupHelperUrl(url)
-    searchIsReady()
+    await refreshLookupCapability()
     await save()
     return saved
   },
   checkLookupHelper: async (url: string) => helperIsRunning(url),
+  /** Whether a lookup can be run right now. Checks for the helper afresh. */
+  lookupAvailable: async () => refreshLookupCapability(),
 
   listEvents: async () => listEvents(),
   getEventDetail: async (id: string) => getEventDetail(id),

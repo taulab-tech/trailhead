@@ -76,11 +76,13 @@ export default function SettingsPage({
               <p>
                 Run <code>pip install ddgs</code> once, then{' '}
                 <code>python trailhead_lookup.py</code> from the <code>lookup-helper</code> folder.
-                Leave this empty and the app offers to open the search in a tab instead.
+                That is all &mdash; the app looks for it at its usual address and uses it when it is
+                there. Only fill this in if you started it on a different port. When it isn&rsquo;t
+                running, the app offers to open the search in a tab instead.
               </p>
             </div>
             <div className="settings-control">
-              <label htmlFor="helper-url">Helper address</label>
+              <label htmlFor="helper-url">Helper address (only if you changed the port)</label>
               <input
                 id="helper-url"
                 type="text"
