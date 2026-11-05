@@ -59,7 +59,12 @@ export default function ReachOut(): React.JSX.Element | null {
       : groups.map((g) => `${g.people.length} ${g.short}`).join(' · ')
 
   return (
-    <CollapsibleCard title="Worth a word" count={suggestions.length} summary={summary} className="reach-out">
+    <CollapsibleCard
+      title="Worth a word"
+      count={suggestions.length === 0 ? undefined : suggestions.length}
+      summary={summary}
+      className="reach-out"
+    >
       {groups.length === 0 ? (
         <p className="text-faint" style={{ margin: 0 }}>
           Nobody stands out right now. This fills in once students have courses on record and a
