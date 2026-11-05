@@ -80,4 +80,29 @@ for (const last of LAST) {
   }
 }
 
+// A reversed-name pair with a roster on one side, and one with neither,
+// so the duplicates screen can be looked at.
+import { matchStudent, newMatchContext } from '../src/main/matching'
+import { suggestDuplicate } from '../src/main/db/duplicates'
+
+const fromRoster = matchStudent(
+  { firstName: 'Amara', lastName: 'Okonkwo', nsid: 'zz9001', emails: [], phones: [], nameOrderConfirmed: true },
+  newMatchContext('2026-09-01', 'classlist GE 450.xls')
+).studentId
+const swapped = matchStudent(
+  { firstName: 'Okonkwo', lastName: 'Amara', emails: ['amara.okonkwo@example.com'], phones: [] },
+  newMatchContext('2026-09-01', 'alumni.csv')
+).studentId
+suggestDuplicate(fromRoster, swapped, 1, 'Identical name')
+
+const unknownA = matchStudent(
+  { firstName: 'Bence', lastName: 'Lindqvist', emails: ['b.l@example.com'], phones: [] },
+  newMatchContext('2026-09-01', 'alumni.csv')
+).studentId
+const unknownB = matchStudent(
+  { firstName: 'Lindqvist', lastName: 'Bence', emails: ['lindqvist.b@example.com'], phones: [] },
+  newMatchContext('2026-09-01', 'signups.xlsx')
+).studentId
+suggestDuplicate(unknownA, unknownB, 1, 'Identical name')
+
 console.log(`fixture written: ${path.resolve(out)} — ${n} invented students`)

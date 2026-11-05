@@ -5,6 +5,8 @@ import { estimateYearInProgram, readEventDate, readTermStamp } from '../yearInPr
 import type { YearObservation } from '../../shared/types'
 import { normalizeEmail, normalizeNsid, normalizePhone } from '../normalize'
 import type { Attendance, NewStudentInput, Student, StudentDetail } from '../../shared/types'
+import { isReversedName, NAME_ORDER_CONFIRMED, NAME_ORDER_FIELD } from '../nameOrder'
+import { nameOrderIsConfirmed, recordFieldSource } from './fieldSources'
 
 interface StudentRow {
   id: string
@@ -471,8 +473,20 @@ export function mergeStudents(keepId: string, mergeId: string): void {
     // NSIDs are unique, so release mergeId's before it can be copied onto keepId.
     db.prepare('UPDATE students SET nsid = NULL WHERE id = ?').run(mergeId)
 
+    // Where the two differ only in which way round the name is, and a
+    // roster settled it for the record being merged away, the surviving
+    // record takes that order. Merging has already established they are one
+    // person, so keeping the swapped name would be preserving a known
+    // mistake just because of which button was pressed.
+    const nameFix =
+      isReversedName(keep, merge) && nameOrderIsConfirmed(mergeId) && !nameOrderIsConfirmed(keepId)
+        ? { firstName: merge.firstName, lastName: merge.lastName }
+        : {}
+    if (nameFix.firstName) recordFieldSource(keepId, NAME_ORDER_FIELD, new Date().toISOString().slice(0, 10), NAME_ORDER_CONFIRMED)
+
     // Fill in blanks on the surviving record.
     updateStudent(keepId, {
+      ...nameFix,
       nsid: keep.nsid ?? merge.nsid ?? undefined,
       college: keep.college ?? merge.college ?? undefined,
       discipline: keep.discipline ?? merge.discipline ?? undefined,

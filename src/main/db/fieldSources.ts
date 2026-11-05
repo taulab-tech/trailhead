@@ -1,4 +1,5 @@
 import { getDb } from './index'
+import { NAME_ORDER_CONFIRMED, NAME_ORDER_FIELD } from '../nameOrder'
 
 /**
  * When each of a student's details was last known to be true.
@@ -49,4 +50,15 @@ export function recordFieldSource(
 export function markFieldsManual(studentId: string, fields: string[]): void {
   const now = new Date().toISOString()
   for (const field of fields) recordFieldSource(studentId, field, now, MANUAL_SOURCE)
+}
+
+/**
+ * Whether this student's name order came from a roster that wrote it as
+ * "Last, First", rather than from a sheet's column headings.
+ */
+export function nameOrderIsConfirmed(studentId: string): boolean {
+  const row = getDb()
+    .prepare('SELECT source FROM student_field_sources WHERE student_id = ? AND field = ?')
+    .get(studentId, NAME_ORDER_FIELD) as { source: string } | undefined
+  return row?.source === NAME_ORDER_CONFIRMED
 }

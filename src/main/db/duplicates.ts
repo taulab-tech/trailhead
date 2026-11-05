@@ -1,7 +1,9 @@
 import { newId } from '../ids'
 import { getDb } from './index'
 import { getStudentById } from './students'
-import type { PossibleDuplicate } from '../../shared/types'
+import { nameOrderIsConfirmed } from './fieldSources'
+import { explainReversedName, isReversedName } from '../nameOrder'
+import type { PossibleDuplicate, Student } from '../../shared/types'
 
 interface DuplicateRow {
   id: string
@@ -28,6 +30,40 @@ export function suggestDuplicate(studentAId: string, studentBId: string, score: 
   ).run(newId(), a, b, score, reason, new Date().toISOString())
 }
 
+
+/**
+ * Fills in what the pair looks like now, rather than what it looked like
+ * when it was flagged.
+ *
+ * The reversed-name case is worked out on read for two reasons: pairs
+ * already queued from an earlier build get the better explanation without
+ * re-importing anything, and the roster evidence can arrive after the pair
+ * was flagged — a class list imported next week settles which way round a
+ * name goes, and the screen should say so the moment it does.
+ */
+function describe(row: DuplicateRow, studentA: Student, studentB: Student): PossibleDuplicate {
+  const base = {
+    id: row.id,
+    studentA,
+    studentB,
+    score: row.score,
+    status: row.status,
+    createdAt: row.created_at
+  }
+
+  if (isReversedName(studentA, studentB)) {
+    const verdict = explainReversedName(
+      studentA,
+      studentB,
+      nameOrderIsConfirmed(studentA.id),
+      nameOrderIsConfirmed(studentB.id)
+    )
+    return { ...base, reason: verdict.reason, reversedName: true, confirmedNameSide: verdict.confirmed }
+  }
+
+  return { ...base, reason: row.reason ?? '', reversedName: false, confirmedNameSide: null }
+}
+
 export function listPossibleDuplicates(status: 'pending' | 'merged' | 'dismissed' = 'pending'): PossibleDuplicate[] {
   const db = getDb()
   const rows = db
@@ -38,15 +74,7 @@ export function listPossibleDuplicates(status: 'pending' | 'merged' | 'dismissed
     const studentA = getStudentById(row.student_a_id)
     const studentB = getStudentById(row.student_b_id)
     if (!studentA || !studentB) continue
-    result.push({
-      id: row.id,
-      studentA,
-      studentB,
-      score: row.score,
-      reason: row.reason ?? '',
-      status: row.status,
-      createdAt: row.created_at
-    })
+    result.push(describe(row, studentA, studentB))
   }
   return result
 }
@@ -73,13 +101,5 @@ export function getDuplicateById(id: string): PossibleDuplicate | null {
   const studentA = getStudentById(row.student_a_id)
   const studentB = getStudentById(row.student_b_id)
   if (!studentA || !studentB) return null
-  return {
-    id: row.id,
-    studentA,
-    studentB,
-    score: row.score,
-    reason: row.reason ?? '',
-    status: row.status,
-    createdAt: row.created_at
-  }
+  return describe(row, studentA, studentB)
 }

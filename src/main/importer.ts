@@ -638,6 +638,10 @@ function runSheetImport(
     for (const [rowIndex, row] of rows.entries()) {
       let firstName = firstNameCol ? row[firstNameCol] : ''
       let lastName = lastNameCol ? row[lastNameCol] : ''
+      // Only a comma tells us which half is the surname. Two columns headed
+      // "first name" and "last name" are a claim about the data, and rows
+      // get typed into them the wrong way round.
+      let nameOrderConfirmed = false
       if (!firstName && !lastName && fullNameCol && row[fullNameCol]) {
         const raw = row[fullNameCol].trim()
         if (raw.includes(',')) {
@@ -645,6 +649,7 @@ function runSheetImport(
           const [last, first] = raw.split(',').map((s) => s.trim())
           lastName = last ?? ''
           firstName = first ?? ''
+          nameOrderConfirmed = !!(first && last)
         } else {
           const parts = raw.split(/\s+/)
           firstName = parts[0] ?? ''
@@ -681,6 +686,7 @@ function runSheetImport(
       const { studentId, created } = matchStudent({
         firstName: firstName || '(Unknown)',
         lastName: lastName || '',
+        nameOrderConfirmed,
         nsid: nsidCol ? row[nsidCol] : null,
         emails,
         phones,

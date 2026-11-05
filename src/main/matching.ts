@@ -14,6 +14,7 @@ import { fieldSourcesFor, MANUAL_SOURCE, recordFieldSource } from './db/fieldSou
 import { FIELD_LABELS, UPDATABLE_FIELDS, type FieldUpdate, type UpdatableField } from '../shared/types'
 import { idLocalPart, normalizeName, normalizeNsid } from './normalize'
 import { nameSimilarity } from './similarity'
+import { NAME_ORDER_CONFIRMED, NAME_ORDER_FIELD } from './nameOrder'
 
 export const FUZZY_DUPLICATE_THRESHOLD = 0.9
 
@@ -57,6 +58,11 @@ function namesAgree(a: { firstName: string; lastName: string }, b: { firstName: 
 export interface PersonRecord {
   firstName: string
   lastName: string
+  /**
+   * True when the source wrote the name as "Last, First", so which half is
+   * the surname is a fact rather than a column heading's claim.
+   */
+  nameOrderConfirmed?: boolean
   nsid?: string | null
   emails: string[]
   phones: string[]
@@ -175,6 +181,18 @@ function applyIncoming(
   }
 }
 
+
+/**
+ * Notes that this student's name order came from a roster rather than from
+ * a column heading. Recorded once and never unrecorded: a later sheet that
+ * only claims the order does not cast doubt on a comma that stated it.
+ */
+function noteConfirmedNameOrder(studentId: string, person: PersonRecord, context?: MatchContext): void {
+  if (!person.nameOrderConfirmed) return
+  const observedAt = context?.observedAt ?? new Date().toISOString().slice(0, 10)
+  recordFieldSource(studentId, NAME_ORDER_FIELD, observedAt, NAME_ORDER_CONFIRMED)
+}
+
 /**
  * Matches (or creates) the student for a single imported attendance row.
  * Priority: student ID exact > student ID ignoring any "@…" part (only when
@@ -256,6 +274,7 @@ export function matchStudent(person: PersonRecord, context?: MatchContext): Matc
     }
     for (const email of normalizedEmails) addEmail(studentId, email)
     for (const phone of person.phones) addPhone(studentId, phone)
+    noteConfirmedNameOrder(studentId, person, context)
     return { studentId, created: false }
   }
 
@@ -285,6 +304,7 @@ export function matchStudent(person: PersonRecord, context?: MatchContext): Matc
   }
   for (const email of normalizedEmails) addEmail(newId, email)
   for (const phone of person.phones) addPhone(newId, phone)
+  noteConfirmedNameOrder(newId, person, context)
   return { studentId: newId, created: true }
 }
 

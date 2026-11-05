@@ -62,7 +62,9 @@ export default function DuplicatesReview({ onChanged }: { onChanged: () => void 
         </h2>
         <p>
           Flagged when two records have a very similar name but no matching student ID or email — merge them, or
-          dismiss if they&rsquo;re really two different people.
+          dismiss if they&rsquo;re really two different people. Where the same name appears both ways round, one
+          of the two has the first and last name swapped; a class list writes names as &ldquo;Last, First&rdquo;,
+          so where one has been imported it settles which is right.
         </p>
       </div>
 
@@ -73,9 +75,11 @@ export default function DuplicatesReview({ onChanged }: { onChanged: () => void 
       ) : (
         dupes.map((dup) => (
           <div className="card" key={dup.id}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-              <span className="badge badge-warn">{Math.round(dup.score * 100)}% name match</span>
-              <span className="text-faint">{dup.reason}</span>
+            <div className="dup-head">
+              <span className="badge badge-warn">
+                {dup.reversedName ? 'Name the wrong way round' : `${Math.round(dup.score * 100)}% name match`}
+              </span>
+              <p className="text-faint dup-reason">{dup.reason}</p>
             </div>
             <div style={{ display: 'flex', gap: 14 }}>
               <StudentCard s={dup.studentA} />
@@ -83,18 +87,20 @@ export default function DuplicatesReview({ onChanged }: { onChanged: () => void 
             </div>
             <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
               <button
-                className="btn btn-sm"
+                className={`btn btn-sm${dup.confirmedNameSide === 'a' ? ' btn-primary' : ''}`}
                 disabled={busyId === dup.id}
                 onClick={() => merge(dup, dup.studentA.id)}
               >
                 Merge → keep &quot;{dup.studentA.firstName} {dup.studentA.lastName}&quot;
+                {dup.confirmedNameSide === 'a' && ' — name confirmed'}
               </button>
               <button
-                className="btn btn-sm"
+                className={`btn btn-sm${dup.confirmedNameSide === 'b' ? ' btn-primary' : ''}`}
                 disabled={busyId === dup.id}
                 onClick={() => merge(dup, dup.studentB.id)}
               >
                 Merge → keep &quot;{dup.studentB.firstName} {dup.studentB.lastName}&quot;
+                {dup.confirmedNameSide === 'b' && ' — name confirmed'}
               </button>
               <div className="spacer" />
               <button className="btn btn-ghost btn-sm" disabled={busyId === dup.id} onClick={() => dismiss(dup)}>

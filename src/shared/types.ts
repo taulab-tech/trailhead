@@ -107,6 +107,13 @@ export interface PossibleDuplicate {
   reason: string
   status: 'pending' | 'merged' | 'dismissed'
   createdAt: string
+  /** The two records hold the same name the opposite way round. */
+  reversedName: boolean
+  /**
+   * The side whose name order came from a "Last, First" roster, when one
+   * did. Null means nothing on record settles it.
+   */
+  confirmedNameSide: 'a' | 'b' | null
 }
 
 // --- Import pipeline types ---
