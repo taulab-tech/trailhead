@@ -23,9 +23,17 @@ beforeEach(() => wipeDatabase())
 
 let fileCount = 0
 
+/** "Last, First" has a comma in it, so cells have to be quoted. */
+function csvCell(value: string): string {
+  return /[",]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+}
+
 function sheet(headers: string[], rows: string[][]): string {
   const file = path.join(tmpDir, `sheet-${++fileCount}.csv`)
-  fs.writeFileSync(file, [headers.join(','), ...rows.map((r) => r.join(','))].join('\n'))
+  fs.writeFileSync(
+    file,
+    [headers.map(csvCell).join(','), ...rows.map((r) => r.map(csvCell).join(','))].join('\n')
+  )
   return file
 }
 
@@ -169,6 +177,58 @@ test('that same column stays the year of study on an ordinary roster', () => {
   importSheet(file, { eventName: 'Hackathon', date: '2026-01-17' })
   assert.equal(student('Raman').cohortYear, null)
   assert.equal(student('Raman').yearInProgram, '2nd year')
+})
+
+/* ------------------- the registrar saying they graduated ---------------- */
+
+test('a graduation column marks them, without the sheet being a cohort list', () => {
+  importSheet(
+    sheet(
+      ['Student Name', 'NSID', 'Graduation Ind.'],
+      [
+        ['Raman, Priya', 'prm501', 'Yes'],
+        ['Webb, Marcus', 'mrw502', '']
+      ]
+    ),
+    { eventName: 'GE 431', date: '2026-01-01' }
+  )
+
+  assert.equal(student('Raman').isAlumni, true, 'the registrar said so')
+  assert.equal(student('Webb').isAlumni, false, 'a blank says nothing')
+})
+
+test('only an actual yes counts', () => {
+  importSheet(
+    sheet(
+      ['Student Name', 'NSID', 'Graduation Ind.'],
+      [
+        ['Raman, Priya', 'prm501', 'No'],
+        ['Webb, Marcus', 'mrw502', ' '],
+        ['Okonkwo, Dev', 'dvo503', 'N/A']
+      ]
+    ),
+    { eventName: 'GE 431', date: '2026-01-01' }
+  )
+  for (const name of ['Raman', 'Webb', 'Okonkwo']) {
+    assert.equal(student(name).isAlumni, false, `${name} should not be marked`)
+  }
+})
+
+test('a graduation column is recognised without being mapped by hand', () => {
+  const file = sheet(['Student Name', 'Graduation Ind.'], [['Raman, Priya', 'Yes']])
+  assert.equal(parseWorkbookForPreview(file).sheets[0].suggestedMapping['Graduation Ind.'], 'graduated')
+})
+
+test('a later roster with a blank graduation column does not un-graduate anybody', () => {
+  importSheet(sheet(['Student Name', 'NSID', 'Graduation Ind.'], [['Raman, Priya', 'prm501', 'Yes']]), {
+    eventName: 'GE 431',
+    date: '2024-01-01'
+  })
+  importSheet(sheet(['First Name', 'Last Name', 'NSID'], [['Priya', 'Raman', 'prm501']]), {
+    eventName: 'Mining Hackathon',
+    date: '2026-01-17'
+  })
+  assert.equal(student('Raman').isAlumni, true)
 })
 
 /* ------------------------------ two views ------------------------------- */

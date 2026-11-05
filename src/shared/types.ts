@@ -155,6 +155,7 @@ export type MappableField =
   | 'program'
   | 'yearInProgram'
   | 'cohortYear'
+  | 'graduated'
   | 'position'
   | 'positionOrg'
   | 'positionUrl'

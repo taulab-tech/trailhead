@@ -45,6 +45,8 @@ function detectMapping(headers: string[], rows: Record<string, string>[] = []): 
     else if (h.includes('college')) field = 'college'
     else if (h.includes('degree')) field = 'degree'
     else if (h.includes('discipline') || h.includes('major')) field = 'discipline'
+    // "Graduation Ind." on a registrar class list.
+    else if (h.includes('graduation') || h.includes('graduated')) field = 'graduated'
     else if (h.includes('linkedin')) field = 'positionUrl'
     // "affiliate company" is what the alumni tracker calls the employer.
     else if (h.includes('organisation') || h.includes('organization') || h.includes('affiliate company'))
@@ -392,6 +394,11 @@ function deriveEventName(sheetName: string, fileName: string): string {
   return sheetName.trim()
 }
 
+/** "Yes" in a column that asks a yes/no question. Anything else is not a yes. */
+function saysYes(raw: string | undefined): boolean {
+  return /^(y|yes|true|1|graduated|grad)$/i.test((raw ?? '').trim())
+}
+
 /**
  * A LinkedIn column holds anything from a full URL to a bare handle to the
  * person's name as the link text. Only something that is actually a profile
@@ -560,6 +567,7 @@ function runSheetImport(
   const positionCol = headers.find((h) => request.mapping[h] === 'position')
   const positionOrgCol = headers.find((h) => request.mapping[h] === 'positionOrg')
   const positionUrlCol = headers.find((h) => request.mapping[h] === 'positionUrl')
+  const graduatedCol = headers.find((h) => request.mapping[h] === 'graduated')
   const ignoredColumns = headers.filter((h) => request.mapping[h] === 'ignore')
 
   // Rosters with a mapped year column often get exported as one sheet
@@ -687,7 +695,11 @@ function runSheetImport(
         positionOrg: positionOrgCol ? meaningfulValue(row[positionOrgCol]) : null,
         positionUrl: positionUrlCol ? linkedInUrl(row[positionUrlCol]) : null,
         enrolTerm: yearCol ? parseEnrolTerm(row[yearCol]) : null,
-        isAlumni: request.markAsAlumni === true,
+        // The registrar saying somebody graduated is a record, not a
+        // guess, so it marks them however the sheet was imported. A blank
+        // or a "No" says nothing: plenty of rows are simply not filled in,
+        // and absence of the word is not evidence they are still enrolled.
+        isAlumni: request.markAsAlumni === true || (graduatedCol ? saysYes(row[graduatedCol]) : false),
         // On a cohort list the year column is the year they came through,
         // not the year of study they were in — the alumni tracker keeps it
         // in a column with no heading at all, next to the row numbers.
