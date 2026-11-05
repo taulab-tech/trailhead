@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx'
+import { readWorkbookBytes } from '../main/repackWorkbook'
 import type { WorkbookReader } from '../main/workbooks'
 
 /**
@@ -30,8 +31,8 @@ export async function loadWorkbook(ref: string): Promise<void> {
   if (parsed.has(ref)) return
   const file = files.get(ref)
   if (!file) throw new Error('That spreadsheet is no longer open. Add it again to import it.')
-  const buffer = await file.arrayBuffer()
-  parsed.set(ref, XLSX.read(buffer, { type: 'array', cellDates: false }))
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  parsed.set(ref, readWorkbookBytes(bytes))
 }
 
 export const browserWorkbookReader: WorkbookReader = {

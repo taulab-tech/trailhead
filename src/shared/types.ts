@@ -166,6 +166,8 @@ export type MappableField =
   | 'position'
   | 'positionOrg'
   | 'positionUrl'
+  /** Free text worth keeping against the person — a survey answer, a remark. */
+  | 'notes'
   | 'ignore'
 
 export type ColumnMapping = Record<string, MappableField>

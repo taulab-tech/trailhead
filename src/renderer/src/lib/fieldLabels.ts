@@ -17,6 +17,7 @@ export const FIELD_LABELS: Record<MappableField, string> = {
   position: 'Position',
   positionOrg: 'Organisation / employer',
   positionUrl: 'LinkedIn',
+  notes: 'Notes / survey answer',
   ignore: '— Not used —'
 }
 
@@ -37,5 +38,6 @@ export const FIELD_OPTIONS: MappableField[] = [
   'position',
   'positionOrg',
   'positionUrl',
+  'notes',
   'ignore'
 ]

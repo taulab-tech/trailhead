@@ -5,6 +5,7 @@ import { addAttendance, getStudentById } from './db/students'
 import { getDb } from './db/index'
 import { findCategoryByName } from './db/categories'
 import { detectFuzzyDuplicates, matchStudent, newMatchContext } from './matching'
+import { appendNote } from './db/quickAdd'
 import { normalizeEmail, normalizePhone, titleCase } from './normalize'
 import { enrolDateFor, parseEnrolTerm, parseEnrolYear, parseYearMonthStamp } from './enrolDate'
 import {
@@ -34,7 +35,11 @@ function detectMapping(headers: string[], rows: Record<string, string>[] = []): 
     const h = header.toLowerCase().trim()
     let field: MappableField = 'ignore'
 
+    // Survey questions are whole sentences — "What is your NSID?" — so the
+    // exact-match list below is tried first and the looser tests after it,
+    // where a word appearing anywhere in the question is enough.
     if (['nsid', 'id', 'student id', 'student number', 'student no', 'student #', 'student no.'].includes(h)) field = 'nsid'
+    else if (/\bnsid\b/.test(h) || /\bstudent (id|number)\b/.test(h)) field = 'nsid'
     else if (h.includes('year')) field = 'yearInProgram'
     else if (h.includes('email')) field = 'email'
     else if (h.includes('phone') || h.includes('cell')) field = 'phone'
@@ -42,6 +47,9 @@ function detectMapping(headers: string[], rows: Record<string, string>[] = []): 
     else if (h.includes('first name') || h === 'first') field = 'firstName'
     else if (h.includes('last name') || h === 'last' || h.includes('surname')) field = 'lastName'
     else if (h === 'name' || h.includes('student name') || h.includes('full name')) field = 'fullName'
+    // "What is your name (First & Last)?" — asked after the two-column
+    // headings above, so a sheet with both still uses those.
+    else if (/\bnames?\b/.test(h)) field = 'fullName'
     else if (h.includes('college')) field = 'college'
     else if (h.includes('degree')) field = 'degree'
     else if (h.includes('discipline') || h.includes('major')) field = 'discipline'
@@ -54,6 +62,7 @@ function detectMapping(headers: string[], rows: Record<string, string>[] = []): 
     else if (h.includes('position') || h.includes('job title')) field = 'position'
     else if (h.includes('cohort')) field = 'cohortYear'
     else if (h.includes('program')) field = 'program'
+    else if (h.includes('note') || h.includes('comment')) field = 'notes'
 
     mapping[header] = field
   }
@@ -210,12 +219,124 @@ function sheetRows(ws: XLSX.WorkSheet, headers: string[], headerRow: number): Re
     .filter((r) => Object.values(r).some((v) => v !== ''))
 }
 
+/** One question, and the columns its answers are spread across. */
+interface ColumnGroup {
+  label: string
+  columns: number[]
+}
+
+/** The raw text of a header cell, with no placeholder standing in for blank. */
+function headerText(ws: XLSX.WorkSheet, row: number, column: number): string {
+  const cell = ws[XLSX.utils.encode_cell({ r: row, c: column })]
+  const raw = cell ? cell.w ?? cell.v : undefined
+  return raw === undefined || raw === null ? '' : String(raw).trim()
+}
+
+/**
+ * Works out whether a sheet puts one question across several columns.
+ *
+ * Survey exports do. A checkbox question is written once, above the first
+ * of its columns, with the answer options in the row underneath and the
+ * remaining header cells left blank:
+ *
+ *     What is your discipline? |          |            |  ...
+ *     Mechanical               | Civil    | Electrical |  ...
+ *     Civil                    |          |            |      <- the answer
+ *
+ * Read a column at a time, that question is eight columns of mostly
+ * nothing and the one answer lands under whichever option was ticked. Read
+ * as a group it is one field with one value, which is what it always was.
+ *
+ * The test is deliberately narrow: a label with blank header cells *after*
+ * it, and a row below that labels every one of them. Blank headers before
+ * the first label are a different thing — the alumni tracker keeps the
+ * enrol year in an unlabelled column, and that column has to survive as
+ * itself.
+ */
+function detectColumnGroups(
+  ws: XLSX.WorkSheet,
+  range: XLSX.Range,
+  headerRow: number
+): { groups: ColumnGroup[]; subHeaderRow: number | null } | null {
+  const labels: { column: number; text: string }[] = []
+  for (let c = range.s.c; c <= range.e.c; c++) labels.push({ column: c, text: headerText(ws, headerRow, c) })
+
+  const groups: ColumnGroup[] = []
+  let current: ColumnGroup | null = null
+  for (const { column, text } of labels) {
+    if (text !== '' || current === null) {
+      current = { label: text, columns: [column] }
+      groups.push(current)
+    } else {
+      current.columns.push(column)
+    }
+  }
+
+  const spanning = groups.filter((g) => g.columns.length > 1 && g.label !== '')
+  if (spanning.length === 0) return null
+
+  // Every column of a spanning group must be labelled in the row below,
+  // or this is a sheet with gaps in its header rather than a survey.
+  const subHeaderRow = headerRow + 1
+  if (subHeaderRow > range.e.r) return null
+  const labelled = spanning.every((group) =>
+    group.columns.every((c) => headerText(ws, subHeaderRow, c) !== '')
+  )
+  if (!labelled) return null
+
+  return { groups, subHeaderRow }
+}
+
+/**
+ * Reads the rows of a grouped sheet, one value per question.
+ *
+ * Every answer the respondent gave to a question is kept, joined, because
+ * a question like "which of these would you like to hear about?" has
+ * several and dropping all but the first would quietly lose most of the
+ * answer.
+ */
+function groupedRows(
+  ws: XLSX.WorkSheet,
+  groups: ColumnGroup[],
+  headers: string[],
+  firstDataRow: number,
+  lastRow: number
+): Record<string, string>[] {
+  const rows: Record<string, string>[] = []
+  for (let r = firstDataRow; r <= lastRow; r++) {
+    const out: Record<string, string> = {}
+    groups.forEach((group, i) => {
+      const values: string[] = []
+      for (const c of group.columns) {
+        const link = hyperlinkedProfile(ws, r, c)
+        const value = link ?? headerText(ws, r, c)
+        if (value !== '' && !values.includes(value)) values.push(value)
+      }
+      out[headers[i]] = values.join('; ')
+    })
+    if (Object.values(out).some((v) => v !== '')) rows.push(out)
+  }
+  return rows
+}
+
 /** Locates the real header row (see findHeaderRow) and parses headers + data rows relative to it. */
 function parseSheet(ws: XLSX.WorkSheet): { headers: string[]; rows: Record<string, string>[] } {
   const ref = ws['!ref']
   if (!ref) return { headers: [], rows: [] }
   const range = XLSX.utils.decode_range(ref)
   const headerRow = findHeaderRow(ws, range)
+
+  const grouped = detectColumnGroups(ws, range, headerRow)
+  if (grouped) {
+    const headers = grouped.groups.map(
+      (g, i) => g.label || `Column ${g.columns[0] - range.s.c + 1}` || `Column ${i + 1}`
+    )
+    return {
+      headers,
+      rows: groupedRows(ws, grouped.groups, headers, (grouped.subHeaderRow ?? headerRow) + 1, range.e.r)
+    }
+  }
+
   const headers = sheetHeaders(ws, range, headerRow)
   const rows = sheetRows(ws, headers, headerRow)
   return { headers, rows }
@@ -564,6 +685,7 @@ function runSheetImport(
   const programCol = headers.find((h) => request.mapping[h] === 'program')
   const yearCol = headers.find((h) => request.mapping[h] === 'yearInProgram')
   const cohortCol = headers.find((h) => request.mapping[h] === 'cohortYear')
+  const notesColumns = headers.filter((h) => request.mapping[h] === 'notes')
   const positionCol = headers.find((h) => request.mapping[h] === 'position')
   const positionOrgCol = headers.find((h) => request.mapping[h] === 'positionOrg')
   const positionUrlCol = headers.find((h) => request.mapping[h] === 'positionUrl')
@@ -718,6 +840,13 @@ function runSheetImport(
 
       const { eventId, eventName } = eventIdForRow(yearCol ? row[yearCol] : null)
       addAttendance(studentId, eventId, extraFields)
+
+      // Survey answers are kept against the person, with the question they
+      // answered, because "Hackathons; SIGMA" means nothing on its own.
+      for (const column of notesColumns) {
+        const answer = row[column]?.trim()
+        if (answer) appendNote(studentId, `${column} ${answer}`, eventName, request.eventDate)
+      }
       if (course) {
         const enrolment = readCourseEnrolment(headers, row)
         recordStudentCourse({

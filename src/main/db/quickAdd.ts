@@ -280,7 +280,7 @@ function findExisting(line: { firstName: string; lastName: string; emails: strin
  * Added to rather than replacing: a note from a hackathon in March is not
  * made untrue by a note from a showcase in November.
  */
-function appendNote(studentId: string, note: string, eventName: string | null, date: string | null): void {
+export function appendNote(studentId: string, note: string, eventName: string | null, date: string | null): void {
   const student = getStudentById(studentId)
   if (!student) return
   const stamp = [eventName, date].filter(Boolean).join(', ')
