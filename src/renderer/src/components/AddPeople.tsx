@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import type { EventCategory, QuickAddPerson, QuickAddResult } from '../../../shared/types'
 import { useDataVersion } from '../DataContext'
-import StudentDetailDrawer from '../components/StudentDetailDrawer'
+import StudentDetailDrawer from './StudentDetailDrawer'
 
 /** "2026-09-14" → "14 Sep 2026". */
 function formatDate(date: string): string {
@@ -121,11 +121,14 @@ function PersonCard({
  * other half of the job: standing at a table with a list of names and
  * wanting both to record them and to know, right then, who you are talking
  * to. Nothing is written until the preview has been looked at.
+ *
+ * Lives as a tab on the Students screen, because that is where somebody
+ * goes when they are thinking about people rather than about files.
  */
-export default function QuickAddPage({
-  onNavigate
+export default function AddPeople({
+  onViewStudents
 }: {
-  onNavigate: (page: string) => void
+  onViewStudents: () => void
 }): React.JSX.Element {
   const [text, setText] = useState('')
   const [eventName, setEventName] = useState('')
@@ -181,15 +184,10 @@ export default function QuickAddPage({
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h1>Add people</h1>
-          <p>
-            Type or paste a list of names — one per line. You get told who is new and who you have met
-            before, and what to say to each of them, before anything is saved.
-          </p>
-        </div>
-      </div>
+      <p className="text-dim qa-lede">
+        Type or paste a list of names — one per line. You get told who is new and who you have met
+        before, and what to say to each of them, before anything is saved.
+      </p>
 
       <div className="card">
         <div className="qa-form">
@@ -268,8 +266,8 @@ export default function QuickAddPage({
             </button>
           )}
           {added && (
-            <button className="btn" onClick={() => onNavigate('students')}>
-              Go to Students
+            <button className="btn" onClick={onViewStudents}>
+              See them in the list
             </button>
           )}
           <div className="spacer" />

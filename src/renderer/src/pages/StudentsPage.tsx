@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react'
 import type { Student } from '../../../shared/types'
 import { exportStudentsToExcel, type ProgressByStudent } from '../lib/exportStudents'
 import StudentDetailDrawer from '../components/StudentDetailDrawer'
+import AddPeople from '../components/AddPeople'
 import LinkedInMatches from '../components/LinkedInMatches'
 
-export type StudentsView = 'list' | 'alumni' | 'matches'
+export type StudentsView = 'list' | 'alumni' | 'matches' | 'add'
 
 type SortKey = 'name' | 'year' | 'events'
 
@@ -165,9 +166,19 @@ export default function StudentsPage({
             {matchesToReview > 0 && <span className="sheet-tab-count">{matchesToReview}</span>}
           </button>
         )}
+        <button
+          role="tab"
+          aria-selected={view === 'add'}
+          className={`sheet-tab ${view === 'add' ? 'is-active' : ''}`}
+          onClick={() => setView('add')}
+        >
+          Add people
+        </button>
       </div>
 
-      {view === 'matches' && window.api.capabilities.positionLookup ? (
+      {view === 'add' ? (
+        <AddPeople onViewStudents={() => setView('list')} />
+      ) : view === 'matches' && window.api.capabilities.positionLookup ? (
         <LinkedInMatches onNavigate={onNavigate} />
       ) : (
       <>

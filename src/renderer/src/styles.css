@@ -3436,3 +3436,11 @@ input[type='month'] {
     grid-template-columns: 1fr;
   }
 }
+
+/* Sits where a page header's lede would, now that this is a tab. */
+.qa-lede {
+  max-width: 76ch;
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.6;
+}

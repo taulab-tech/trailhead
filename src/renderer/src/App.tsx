@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { DataProvider, useDataVersion } from './DataContext'
 import ImportPage from './pages/ImportPage'
-import QuickAddPage from './pages/QuickAddPage'
 import StudentsPage, { type StudentsView } from './pages/StudentsPage'
 import EventsPage from './pages/EventsPage'
 import CertificatesPage from './pages/CertificatesPage'
@@ -10,7 +9,7 @@ import TrailPage from './pages/TrailPage'
 import SettingsPage from './pages/SettingsPage'
 import Logo from './components/Logo'
 
-type Page = 'quickadd' | 'import' | 'students' | 'events' | 'certificates' | 'dashboard' | 'groups' | 'settings'
+type Page = 'import' | 'students' | 'events' | 'certificates' | 'dashboard' | 'groups' | 'settings'
 
 type DbAction = 'export' | 'restore' | 'wipe' | null
 
@@ -105,11 +104,6 @@ function Shell(): React.JSX.Element {
 
   const nav: { key: Page; label: string; icon: React.JSX.Element }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: <Icon d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z" /> },
-    {
-      key: 'quickadd',
-      label: 'Add people',
-      icon: <Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6" />
-    },
     { key: 'import', label: 'Import', icon: <Icon d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" /> },
     {
       key: 'students',
@@ -191,7 +185,6 @@ function Shell(): React.JSX.Element {
       </div>
       <div className="content">
         {page === 'dashboard' && <DashboardPage onNavigate={navigate} />}
-        {page === 'quickadd' && <QuickAddPage onNavigate={navigate} />}
         {page === 'import' && <ImportPage onImported={bump} onNavigate={navigate} />}
         {page === 'students' && <StudentsPage key={studentsView} initialView={studentsView} onNavigate={navigate} />}
         {page === 'events' && <EventsPage />}
