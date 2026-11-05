@@ -43,6 +43,20 @@ function looksLikeGraduate(text: string): boolean {
  * Those are somebody ticking several boxes, and there is no way to tell
  * which they meant, so they are treated as no answer rather than a guess.
  */
+/**
+ * A bare four-digit year in the year column is the year somebody enrolled,
+ * not the year they are in — the cohort trackers keep it that way, and the
+ * column is labelled "Year in program / enroll year" because it holds both.
+ * It says just as much, it just has to be counted forward from instead of
+ * added to.
+ */
+export function parseEnrolmentYear(raw: string | null | undefined): number | null {
+  const text = (raw ?? '').trim()
+  if (!/^(19|20)\d{2}$/.test(text)) return null
+  const year = Number(text)
+  return year >= 1990 && year <= new Date().getFullYear() + 1 ? year : null
+}
+
 export function parseYearOfStudy(raw: string | null | undefined): number | 'graduate' | null {
   if (!raw) return null
   const text = raw.trim()
@@ -109,23 +123,29 @@ const UNKNOWN: YearEstimate = {
  * share an academic year, the registrar's over a self-reported form answer.
  */
 function bestObservation(observations: YearObservation[]): YearObservation | null {
-  let best: YearObservation | null = null
-  for (const observation of observations) {
-    if (parseYearOfStudy(observation.raw) === null) continue
-    if (!best) {
-      best = observation
-      continue
-    }
-    if (observation.academicYear > best.academicYear) best = observation
-    else if (
+  const usable = observations.filter(
+    (o) => parseYearOfStudy(o.raw) !== null || parseEnrolmentYear(o.raw) !== null
+  )
+  if (usable.length === 0) return null
+
+  // Dated first. An undated value has to be stamped with some academic year
+  // to be comparable at all, and stamping it with this one would otherwise
+  // let it outrank a real observation from a class list.
+  const dated = usable.filter((o) => o.dated !== false)
+  const pool = dated.length > 0 ? dated : usable
+
+  return pool.reduce((best, observation) => {
+    if (observation.academicYear > best.academicYear) return observation
+    // The registrar is believed over a form somebody filled in themselves.
+    if (
       observation.academicYear === best.academicYear &&
       observation.source === 'classlist' &&
       best.source !== 'classlist'
     ) {
-      best = observation
+      return observation
     }
-  }
-  return best
+    return best
+  })
 }
 
 /**
@@ -139,17 +159,39 @@ export function estimateYearInProgram(
   const observation = bestObservation(observations)
   if (!observation) return UNKNOWN
 
+  const dated = observation.dated !== false
+  const currentAcademicYear = academicYearOf(today.getFullYear(), today.getMonth() + 1)
+
+  // An enrolment year is counted forward from itself, not from when it was
+  // written down: enrolled in 2024 means second year in 2025-26, whenever
+  // the record happens to have been made.
+  const enrolled = parseEnrolmentYear(observation.raw)
+  if (enrolled !== null) {
+    const estimated = currentAcademicYear - enrolled + 1
+    const basis = `enrolled ${enrolled}`
+    if (estimated < 1) return UNKNOWN
+    if (estimated > LONGEST_PROGRAMME) {
+      return { kind: 'likely_graduated', year: null, label: 'Likely finished', ordinal: 7, basis, current: false }
+    }
+    return {
+      kind: 'year',
+      year: estimated,
+      label: `Year ${estimated}`,
+      ordinal: estimated,
+      basis,
+      current: false
+    }
+  }
+
   const parsed = parseYearOfStudy(observation.raw)
   if (parsed === null) return UNKNOWN
 
-  const dated = observation.dated !== false
   const basis = `${observation.raw.trim()}, ${observation.when}`
 
   if (parsed === 'graduate') {
     return { kind: 'graduate', year: null, label: 'Graduate student', ordinal: 6, basis, current: dated }
   }
 
-  const currentAcademicYear = academicYearOf(today.getFullYear(), today.getMonth() + 1)
   const elapsed = Math.max(0, currentAcademicYear - observation.academicYear)
   const estimated = parsed + elapsed
 

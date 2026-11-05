@@ -20,9 +20,26 @@ export const FUZZY_DUPLICATE_THRESHOLD = 0.9
 /** How alike two names must be before an email-form student ID may link them. */
 export const ID_NAME_AGREEMENT_THRESHOLD = 0.85
 
-/** Two student IDs belong to different people when the parts before any "@" differ. */
+/**
+ * An NSID ("acf879") and a student number ("11272798") are two different
+ * kinds of identifier, not two different values of one. The registrar's
+ * class lists carry the number and the contact trackers carry the NSID, so
+ * the same person routinely arrives with one of each.
+ */
+function idKind(id: string): 'number' | 'nsid' {
+  return /^\d{6,10}$/.test(idLocalPart(id)) ? 'number' : 'nsid'
+}
+
+/**
+ * Two student IDs prove two different people only when they are the same
+ * kind of identifier and still differ. Holding a number against an NSID
+ * says nothing either way, and treating it as a contradiction split 74
+ * real people into two records apiece.
+ */
 function idsConflict(a: string | null | undefined, b: string | null | undefined): boolean {
-  return !!a && !!b && idLocalPart(a) !== idLocalPart(b)
+  if (!a || !b) return false
+  if (idKind(a) !== idKind(b)) return false
+  return idLocalPart(a) !== idLocalPart(b)
 }
 
 /**

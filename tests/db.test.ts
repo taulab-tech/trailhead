@@ -745,3 +745,44 @@ test('the overview counts each move between stops once per student', () => {
   assert.equal(count(1, 0), 1) // c went back twice but is one student
   assert.equal(count(0, 2), 0)
 })
+
+test('an NSID and a student number for one person are not treated as two people', () => {
+  // The registrar's class lists carry the student number; the contact
+  // trackers carry the NSID. The same person arrives with one of each, and
+  // treating that as a contradiction splits them into two records.
+  const first = createStudent({ firstName: 'Marisol', lastName: 'Okafor', nsid: '90000123' })
+  const { studentId, created } = matchStudent({
+    firstName: 'Marisol',
+    lastName: 'Okafor',
+    nsid: 'mko456',
+    emails: [],
+    phones: []
+  })
+
+  assert.equal(created, false, 'should find the person already on file')
+  assert.equal(studentId, first)
+})
+
+test('two different student numbers are still two different people', () => {
+  createStudent({ firstName: 'Marisol', lastName: 'Okafor', nsid: '90000123' })
+  const { created } = matchStudent({
+    firstName: 'Marisol',
+    lastName: 'Okafor',
+    nsid: '90000999',
+    emails: [],
+    phones: []
+  })
+  assert.equal(created, true, 'one number belongs to one person')
+})
+
+test('two different NSIDs are still two different people', () => {
+  createStudent({ firstName: 'Marisol', lastName: 'Okafor', nsid: 'mko456' })
+  const { created } = matchStudent({
+    firstName: 'Marisol',
+    lastName: 'Okafor',
+    nsid: 'zzz111',
+    emails: [],
+    phones: []
+  })
+  assert.equal(created, true)
+})

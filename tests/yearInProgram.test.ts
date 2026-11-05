@@ -12,6 +12,7 @@ import { openDb } from '../src/main/db/desktop'
 import {
   academicYearOf,
   estimateYearInProgram,
+  parseEnrolmentYear,
   parseYearOfStudy,
   readEventDate,
   readTermStamp
@@ -220,4 +221,48 @@ test('the list and the single record agree', () => {
   const fromList = listStudents().find((s) => s.id === student)!
   const fromRecord = getStudentById(student)!
   assert.deepEqual(fromList.currentYear, fromRecord.currentYear)
+})
+
+/* ------------------------- an enrolment year ---------------------------- */
+
+test('a bare year in the year column is when they enrolled', () => {
+  // The cohort trackers keep it that way, and the column is labelled
+  // "Year in program / enroll year" because it holds both.
+  assert.equal(parseEnrolmentYear('2024'), 2024)
+  assert.equal(parseEnrolmentYear('Fourth Year'), null)
+  assert.equal(parseEnrolmentYear('3'), null)
+  assert.equal(parseEnrolmentYear('1823'), null)
+})
+
+test('an enrolment year is counted forward from itself', () => {
+  // Enrolled in 2024, so third year in 2026-27 — whenever the record was
+  // written down, which is the difference from a year of study.
+  const estimate = estimateYearInProgram(
+    [{ raw: '2024', academicYear: 2019, when: 'Fall 2019', source: 'event', dated: false }],
+    IN_2026_27
+  )
+  assert.equal(estimate.year, 3)
+  assert.equal(estimate.basis, 'enrolled 2024')
+})
+
+test('somebody who enrolled long enough ago has finished', () => {
+  assert.equal(estimateYearInProgram([observed('2019', 2019, 'event')], IN_2026_27).kind, 'likely_graduated')
+})
+
+test('enrolling this year is first year', () => {
+  assert.equal(estimateYearInProgram([observed('2026', 2026, 'event')], IN_2026_27).year, 1)
+})
+
+test('a dated observation beats an undated one, however old it is', () => {
+  // An undated value has to be stamped with some academic year to compare
+  // at all; it must not win on that account.
+  const estimate = estimateYearInProgram(
+    [
+      { raw: '2023', academicYear: 2026, when: 'date unknown', source: 'event', dated: false },
+      observed('Fourth Year', 2024)
+    ],
+    IN_2026_27
+  )
+  assert.equal(estimate.basis, 'Fourth Year, Fall 2024')
+  assert.equal(estimate.kind, 'likely_graduated')
 })
