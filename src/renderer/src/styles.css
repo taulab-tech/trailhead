@@ -3036,3 +3036,65 @@ input[type='month'] {
 .settings-danger h3 {
   color: var(--danger);
 }
+
+/* ---- Worth a word ---- */
+
+.reach-out {
+  margin-bottom: 16px;
+}
+
+.reach-group + .reach-group {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.reach-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+}
+
+.reach-why {
+  margin: 3px 0 8px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.reach-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reach-person {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 5px 8px;
+  margin-left: -8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reach-person:hover {
+  background: var(--bg-elevated-2);
+}
+
+.reach-name {
+  font-weight: 600;
+  font-size: 13px;
+  min-width: 170px;
+}
+
+.reach-detail {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}

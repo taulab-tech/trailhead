@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import type { AttendanceDate, DashboardStats, EventCategory, EventRecord, Student } from '../../../shared/types'
 import FunnelDrillDrawer, { type FunnelSelection } from '../components/FunnelDrillDrawer'
 import PathwayExplorer from '../components/PathwayExplorer'
+import ReachOut from '../components/ReachOut'
 import StudentDetailDrawer from '../components/StudentDetailDrawer'
 import { trailStopLabel } from '../lib/stageLabel'
 import { colorForIndex } from '../lib/palette'
@@ -483,6 +484,8 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: strin
               <div className="stat-sub">{formatShare(withPosition, stats.totalStudents)} of students, from LinkedIn</div>
             </div>
           </div>
+
+          <ReachOut />
 
           {stats.pendingDuplicates > 0 && (
             <div className="card dash-alert">

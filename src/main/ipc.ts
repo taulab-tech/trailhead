@@ -27,7 +27,13 @@ import {
   listPossibleDuplicates
 } from './db/duplicates'
 import { createCategory, deleteCategory, listCategories, updateCategory } from './db/categories'
-import { getAttendanceDates, getDashboardStats, getEventStudentSets, getFunnelStats } from './db/dashboard'
+import {
+  getAttendanceDates,
+  getDashboardStats,
+  getEventStudentSets,
+  getFunnelStats,
+  reachOutSuggestions
+} from './db/dashboard'
 import { lookUpPosition } from './positionLookup'
 import { getSettings, setInstitutionNames, setLookupHelperUrl } from './db/settings'
 import { markFieldsManual } from './db/fieldSources'
@@ -124,6 +130,7 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('dashboard:stats', () => getDashboardStats())
+  ipcMain.handle('dashboard:reachOut', () => reachOutSuggestions())
 
   ipcMain.handle('categories:list', () => listCategories())
   ipcMain.handle('categories:create', (_e, name: string, stageOrder: number | null) =>

@@ -558,3 +558,28 @@ export interface FieldUpdate {
   /** Whether the existing value was typed in rather than imported. */
   fromManual: boolean
 }
+
+/* --------------------------- Who to contact ----------------------------- */
+
+/** Why somebody is worth a word right now. */
+export type ReachOutReason = 'close_to_finishing' | 'final_year' | 'drifting'
+
+/**
+ * One suggested student, with the number behind it. The reason and the
+ * figures are carried so the suggestion can be argued with rather than
+ * taken on trust.
+ */
+export interface ReachOutSuggestion {
+  studentId: string
+  firstName: string
+  lastName: string
+  reason: ReachOutReason
+  /** A sentence saying why, e.g. "3 CU from finishing …". */
+  detail: string
+  certificateName: string
+  unitsRemaining: number
+  percent: number
+  /** The most recent event or course term on their record. */
+  lastSeen: string | null
+  monthsQuiet: number | null
+}

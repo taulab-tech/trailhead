@@ -1,4 +1,10 @@
 import { getDb } from './index'
+import { listStudents } from './students'
+import { listStudentCourses } from './courses'
+import { listCertificateDefinitions } from './certificates'
+import { certificateProgress } from '../certificates'
+import { reachOutList } from '../reachOut'
+import type { ReachOutSuggestion } from '../../shared/types'
 import { findCategoryByName } from './categories'
 import { getPendingDuplicateCount } from './duplicates'
 import { parseEnrolYear, enrolDateFor } from '../enrolDate'
@@ -211,4 +217,50 @@ export function getDashboardStats(): DashboardStats {
     funnel: getFunnelStats(),
     funnelYears: getFunnelYears()
   }
+}
+
+/**
+ * Who to contact, worked out from certificate progress and how long it has
+ * been since anybody saw them.
+ *
+ * Gathered here rather than in the rules so the rules stay testable
+ * without a database behind them.
+ */
+export function reachOutSuggestions(): ReachOutSuggestion[] {
+  const db = getDb()
+  const definitions = listCertificateDefinitions()
+  if (definitions.length === 0) return []
+
+  // The most recent sign of each student: an event they attended, or a term
+  // they were registered in.
+  const lastSeen = new Map<string, string>()
+  const note = (id: string, date: string | null): void => {
+    if (!date) return
+    const current = lastSeen.get(id)
+    if (!current || date > current) lastSeen.set(id, date)
+  }
+  for (const row of db
+    .prepare(
+      `SELECT a.student_id AS id, e.date AS date FROM attendances a
+       JOIN events e ON e.id = a.event_id WHERE e.date IS NOT NULL`
+    )
+    .all() as { id: string; date: string }[]) {
+    note(row.id, row.date)
+  }
+  for (const row of db
+    .prepare("SELECT student_id AS id, term FROM student_courses WHERE term != ''")
+    .all() as { id: string; term: string }[]) {
+    const match = row.term.match(/^(\d{4})(\d{2})$/)
+    if (match) note(row.id, `${match[1]}-${match[2]}-01`)
+  }
+
+  return reachOutList(
+    listStudents().map((student) => ({
+      student,
+      certificates: definitions.map((definition) =>
+        certificateProgress(definition, listStudentCourses(student.id))
+      ),
+      lastSeen: lastSeen.get(student.id) ?? null
+    }))
+  )
 }

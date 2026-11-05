@@ -13,6 +13,7 @@ import type {
   NewStudentInput,
   ParsedWorkbook,
   PossibleDuplicate,
+  ReachOutSuggestion,
   Student,
   StudentDetail,
   PositionSearchResult,
@@ -81,6 +82,7 @@ const api = {
     ipcRenderer.invoke('duplicates:merge', id, keepId),
 
   getDashboardStats: (): Promise<DashboardStats> => ipcRenderer.invoke('dashboard:stats'),
+  getReachOutSuggestions: (): Promise<ReachOutSuggestion[]> => ipcRenderer.invoke('dashboard:reachOut'),
 
   getEventStudentSets: (): Promise<{ eventId: string; studentIds: string[] }[]> =>
     ipcRenderer.invoke('funnel:eventStudentSets'),

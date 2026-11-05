@@ -17,7 +17,8 @@ import {
   getAttendanceDates,
   getDashboardStats,
   getEventStudentSets,
-  getFunnelStats
+  getFunnelStats,
+  reachOutSuggestions
 } from '../main/db/dashboard'
 import { getSettings, setInstitutionNames, setLookupHelperUrl } from '../main/db/settings'
 import { lookUpPosition, setSearchTransport } from '../main/positionLookup'
@@ -212,6 +213,7 @@ export const webApi = {
   },
 
   getDashboardStats: async () => getDashboardStats(),
+  getReachOutSuggestions: async () => reachOutSuggestions(),
   getEventStudentSets: async () => getEventStudentSets(),
   getAttendanceDates: async () => getAttendanceDates(),
   getFunnelForYear: async (year: number | null) => getFunnelStats(year),
