@@ -163,12 +163,28 @@ export default function StudentDetailDrawer({
             />
           </div>
           <div>
-            <label>Year in program / enroll year</label>
+            <label>Year of study, as last recorded</label>
             <input
               type="text"
               value={form.yearInProgram ?? ''}
               onChange={(e) => setForm({ ...form, yearInProgram: e.target.value })}
             />
+            {/*
+              The field above is what a roster said at the time, which is
+              not the same as the year they are in now — a fourth year in
+              2024 is not a fourth year today. The worked-out answer is
+              shown underneath so the two are never mistaken for each other.
+            */}
+            {detail && (
+              <p className="field-note">
+                {detail.currentYear.kind === 'unknown'
+                  ? 'Nothing on file says what year they are in now.'
+                  : `Now: ${detail.currentYear.label}`}
+                {detail.currentYear.basis && !detail.currentYear.current && (
+                  <> — worked out from {detail.currentYear.basis}</>
+                )}
+              </p>
+            )}
           </div>
           <div>
             <label>Enrol term</label>
