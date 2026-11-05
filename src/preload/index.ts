@@ -140,6 +140,10 @@ const api = {
   getSettings: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
   setInstitutionNames: (names: string[]): Promise<string[]> =>
     ipcRenderer.invoke('settings:setInstitutionNames', names),
+  setLookupHelperUrl: (url: string | null): Promise<string | null> =>
+    ipcRenderer.invoke('settings:setLookupHelperUrl', url),
+  checkLookupHelper: (url: string): Promise<boolean> =>
+    ipcRenderer.invoke('settings:checkLookupHelper', url),
 
   backupDatabase: (): Promise<string | null> => ipcRenderer.invoke('db:backup'),
   restoreDatabase: (): Promise<string | null> => ipcRenderer.invoke('db:restore'),

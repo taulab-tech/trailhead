@@ -42,9 +42,15 @@ export default function PositionLookup({
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [hasInstitution, setHasInstitution] = useState(true)
+  // The desktop searches through its own Python; the web build can only do
+  // it when the local helper is set up.
+  const [canSearch, setCanSearch] = useState(window.api.capabilities.positionLookup)
 
   useEffect(() => {
-    window.api.getSettings().then((s) => setHasInstitution(s.institutionNames.length > 0))
+    window.api.getSettings().then((s) => {
+      setHasInstitution(s.institutionNames.length > 0)
+      setCanSearch(window.api.capabilities.positionLookup || !!s.lookupHelperUrl)
+    })
   }, [])
 
   const search = async (): Promise<void> => {
@@ -219,7 +225,7 @@ export default function PositionLookup({
 
       {draft && !lookup && draftEditor}
 
-      {window.api.capabilities.positionLookup ? (
+      {canSearch ? (
         <>
           <div style={{ display: 'flex', gap: 8, marginTop: draft && !lookup ? 14 : 0 }}>
             <input

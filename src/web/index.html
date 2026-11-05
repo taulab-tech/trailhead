@@ -9,10 +9,12 @@
       student data cannot leave this machine even if something tried.
       'wasm-unsafe-eval' is what lets SQLite's WebAssembly compile; it grants
       no access to the network or the page's origin.
+      The two localhost entries are for the optional lookup helper, which
+      runs on the user's own computer. They permit nothing off the machine.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; form-action 'none'; base-uri 'self'"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:* http://localhost:*; worker-src 'self'; form-action 'none'; base-uri 'self'"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />

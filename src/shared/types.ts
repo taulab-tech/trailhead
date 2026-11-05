@@ -313,6 +313,8 @@ export interface PositionSearchResult {
 
 export interface AppSettings {
   institutionNames: string[]
+  /** Where the local lookup helper is listening, or null if it isn't used. */
+  lookupHelperUrl: string | null
 }
 
 /** One student's place in the background LinkedIn lookup queue. */

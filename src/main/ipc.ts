@@ -29,7 +29,7 @@ import {
 import { createCategory, deleteCategory, listCategories, updateCategory } from './db/categories'
 import { getAttendanceDates, getDashboardStats, getEventStudentSets, getFunnelStats } from './db/dashboard'
 import { lookUpPosition } from './positionLookup'
-import { getSettings, setInstitutionNames } from './db/settings'
+import { getSettings, setInstitutionNames, setLookupHelperUrl } from './db/settings'
 import { markFieldsManual } from './db/fieldSources'
 import { UPDATABLE_FIELDS, type UpdatableField } from '../shared/types'
 import {
@@ -181,6 +181,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('settings:get', () => getSettings())
   ipcMain.handle('settings:setInstitutionNames', (_e, names: string[]) => setInstitutionNames(names))
+  // The desktop searches through its own Python, so a helper is never
+  // needed here; the setting exists so one database works in both.
+  ipcMain.handle('settings:setLookupHelperUrl', (_e, url: string | null) => setLookupHelperUrl(url))
+  ipcMain.handle('settings:checkLookupHelper', () => false)
 
   ipcMain.handle('db:backup', async () => {
     const win = BrowserWindow.getFocusedWindow()

@@ -1,5 +1,6 @@
 import { initializeDatabase, looksLikeTrailheadDb, setDbDriver } from '../main/db'
 import { seedCertificatesIfEmpty } from '../main/db/certificates'
+import { refreshLookupCapability } from './api'
 import { setWorkbookReader } from '../main/workbooks'
 import { openWebDatabase, type WebDatabase } from './sqljs'
 import { browserWorkbookReader, forgetWorkbooks } from './workbooks'
@@ -139,6 +140,8 @@ async function start(bytes: Uint8Array | undefined, fileName: string, fileHandle
   setWorkbookReader(browserWorkbookReader)
   initializeDatabase(opened)
   seedCertificatesIfEmpty()
+  // Whether the lookup is offered depends on a setting inside this file.
+  refreshLookupCapability()
   opened.watch(onDatabaseChanged)
 
   db = opened

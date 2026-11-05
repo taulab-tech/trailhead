@@ -3,15 +3,61 @@ import { getDb } from './index'
 export interface AppSettings {
   /** The institution's names as people write them ("University of Saskatchewan", "USask"). */
   institutionNames: string[]
+  /**
+   * Where the local lookup helper is listening, if it is being used.
+   *
+   * A web page can't search for somebody — a search engine won't let a
+   * page read its reply — so the search runs in a small Python program on
+   * the user's own computer and the app asks it. Empty means no automatic
+   * lookup, and the app offers to open the search in a tab instead.
+   */
+  lookupHelperUrl: string | null
 }
 
 const INSTITUTION_KEY = 'institution_names'
+const HELPER_KEY = 'lookup_helper_url'
 
-export function getSettings(): AppSettings {
-  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(INSTITUTION_KEY) as
+function read(key: string): string | null {
+  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as
     | { value: string }
     | undefined
-  return { institutionNames: row ? (JSON.parse(row.value) as string[]) : [] }
+  return row ? row.value : null
+}
+
+export function getSettings(): AppSettings {
+  const names = read(INSTITUTION_KEY)
+  return {
+    institutionNames: names ? (JSON.parse(names) as string[]) : [],
+    lookupHelperUrl: read(HELPER_KEY)
+  }
+}
+
+/**
+ * Saves where the lookup helper is listening. Only a plain http address on
+ * this computer is accepted: the point of the helper is that the search
+ * leaves from the user's own connection, and pointing it at somebody
+ * else's server would quietly undo that.
+ */
+export function setLookupHelperUrl(url: string | null): string | null {
+  const db = getDb()
+  const trimmed = (url ?? '').trim().replace(/\/+$/, '')
+  if (!trimmed) {
+    db.prepare('DELETE FROM settings WHERE key = ?').run(HELPER_KEY)
+    return null
+  }
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    throw new Error('That is not a web address.')
+  }
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) {
+    throw new Error('The helper has to be running on this computer, so the address must be localhost.')
+  }
+  db.prepare(
+    'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+  ).run(HELPER_KEY, trimmed)
+  return trimmed
 }
 
 /** Saves the institution's names; blanks and duplicates are dropped, and an empty list clears it. */

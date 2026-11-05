@@ -3,6 +3,7 @@ import {
   addAttendance,
   createStudent,
   deleteStudent,
+  getStudentById,
   getStudentDetail,
   listStudents,
   mergeStudents,
@@ -18,7 +19,18 @@ import {
   getEventStudentSets,
   getFunnelStats
 } from '../main/db/dashboard'
-import { getSettings, setInstitutionNames } from '../main/db/settings'
+import { getSettings, setInstitutionNames, setLookupHelperUrl } from '../main/db/settings'
+import { lookUpPosition, setSearchTransport } from '../main/positionLookup'
+import {
+  dismissLookups,
+  enqueueLookups,
+  getLookupStatus,
+  listLookups,
+  retryFailedLookups,
+  startLookups,
+  stopLookups
+} from '../main/lookupQueue'
+import { helperIsRunning, helperSearch } from './lookupHelper'
 import { markFieldsManual } from '../main/db/fieldSources'
 import {
   addRequirement,
@@ -63,10 +75,9 @@ import { pickFilesWithInput } from './storage'
  */
 
 /**
- * Lookups are a desktop-only feature: they scrape a search engine through a
- * bundled Python, which a web page can't do and shouldn't try to. Rather
- * than throw on click, the screens check `capabilities` and hide the entry
- * points; these inert stubs keep the badge polling in `App.tsx` honest.
+ * The queue only runs once a search transport exists, which on the web
+ * means the local helper. Without one these answer as an empty queue, so
+ * the badge polling in `App.tsx` stays honest.
  */
 const NO_LOOKUPS: LookupStatus = {
   running: false,
@@ -77,8 +88,30 @@ const NO_LOOKUPS: LookupStatus = {
   secondsPerSearch: 0
 }
 
+/**
+ * Points the lookup at the helper, if one is set up. Returns false when
+ * there is none, which is how every lookup call decides whether to run.
+ */
+function searchIsReady(): boolean {
+  const { lookupHelperUrl } = getSettings()
+  webApi.capabilities.positionLookup = !!lookupHelperUrl
+  if (!lookupHelperUrl) return false
+  setSearchTransport(helperSearch(lookupHelperUrl))
+  return true
+}
+
+/**
+ * Whether the screens should offer the lookup at all. Read once a database
+ * is open, since the answer is a setting inside it.
+ */
+export function refreshLookupCapability(): void {
+  searchIsReady()
+}
+
 function lookupsUnavailable(): never {
-  throw new Error('Looking up positions is only available in the desktop app.')
+  throw new Error(
+    'No lookup helper is set up. Add its address in Settings, or use the search button to look in a tab.'
+  )
 }
 
 export const webApi = {
@@ -130,8 +163,20 @@ export const webApi = {
   },
   removeAttendance: async (attendanceId: string) => removeAttendance(attendanceId),
   mergeStudents: async (keepId: string, mergeId: string) => mergeStudents(keepId, mergeId),
-  findPosition: async (_studentId: string, _extraTerms?: string): Promise<PositionSearchResult> =>
-    lookupsUnavailable(),
+  findPosition: async (studentId: string, extraTerms?: string): Promise<PositionSearchResult> => {
+    if (!searchIsReady()) lookupsUnavailable()
+    const student = getStudentById(studentId)
+    if (!student) throw new Error('Student not found')
+    return lookUpPosition(student.firstName, student.lastName, extraTerms, getSettings().institutionNames)
+  },
+
+  setLookupHelperUrl: async (url: string | null) => {
+    const saved = setLookupHelperUrl(url)
+    searchIsReady()
+    await save()
+    return saved
+  },
+  checkLookupHelper: async (url: string) => helperIsRunning(url),
 
   listEvents: async () => listEvents(),
   getEventDetail: async (id: string) => getEventDetail(id),
@@ -162,13 +207,25 @@ export const webApi = {
   getAttendanceDates: async () => getAttendanceDates(),
   getFunnelForYear: async (year: number | null) => getFunnelStats(year),
 
-  enqueueLookups: async (_studentIds: string[]): Promise<number> => 0,
-  getLookupStatus: async (): Promise<LookupStatus> => NO_LOOKUPS,
-  listLookups: async (): Promise<LookupItem[]> => [],
-  startLookups: async (): Promise<void> => {},
-  stopLookups: async (): Promise<void> => {},
-  retryFailedLookups: async (): Promise<void> => {},
-  dismissLookups: async (_studentIds: string[]): Promise<void> => {},
+  enqueueLookups: async (studentIds: string[]): Promise<number> => {
+    if (!searchIsReady()) return 0
+    const queued = enqueueLookups(studentIds)
+    await save()
+    return queued
+  },
+  getLookupStatus: async (): Promise<LookupStatus> => (searchIsReady() ? getLookupStatus() : NO_LOOKUPS),
+  listLookups: async (): Promise<LookupItem[]> => (searchIsReady() ? listLookups() : []),
+  startLookups: async (): Promise<void> => {
+    if (searchIsReady()) startLookups()
+  },
+  stopLookups: async (): Promise<void> => stopLookups(),
+  retryFailedLookups: async (): Promise<void> => {
+    if (searchIsReady()) retryFailedLookups()
+  },
+  dismissLookups: async (studentIds: string[]): Promise<void> => {
+    dismissLookups(studentIds)
+    await save()
+  },
 
   listCertificates: async () => listCertificates(),
   getCertificate: async (id: string) => getCertificate(id),
