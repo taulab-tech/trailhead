@@ -3037,11 +3037,75 @@ input[type='month'] {
   color: var(--danger);
 }
 
-/* ---- Worth a word ---- */
+/* ---- Cards that start shut ---- */
 
-.reach-out {
+.dash-attention {
   margin-bottom: 16px;
+  align-items: start;
 }
+
+.collapse-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.collapse-head {
+  display: grid;
+  grid-template-columns: 14px auto auto 1fr;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 18px;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.collapse-head:hover {
+  background: var(--bg-elevated-2);
+}
+
+.collapse-chevron {
+  color: var(--text-faint);
+  transition: transform 120ms ease;
+}
+
+.collapse-card.is-open .collapse-chevron {
+  transform: rotate(90deg);
+}
+
+.collapse-title {
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+/* The one line that has to earn the click. Never wraps the card taller. */
+.collapse-summary {
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collapse-body {
+  padding: 16px 18px 18px;
+  border-top: 1px solid var(--border-soft);
+}
+
+@media (max-width: 1100px) {
+  .dash-attention {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Worth a word ---- */
 
 .reach-group + .reach-group {
   margin-top: 18px;
@@ -3097,4 +3161,87 @@ input[type='month'] {
 .reach-detail {
   font-size: 12.5px;
   color: var(--text-dim);
+}
+
+/* Side by side, each card is about half the page, so the name column that
+   suits a full-width list would leave the reason no room. */
+.dash-attention .reach-name {
+  min-width: 128px;
+}
+
+.dash-attention .reach-person {
+  gap: 10px;
+}
+
+/* ---- Recently seen ---- */
+
+.recent-person {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 12px;
+  width: 100%;
+  padding: 6px 8px;
+  margin-left: -8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recent-person:hover {
+  background: var(--bg-elevated-2);
+}
+
+.recent-when {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.recent-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recent-main .reach-name {
+  min-width: 0;
+}
+
+.recent-where {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Sits under the name, in the second column, so the dates stay a clean rule. */
+.recent-promise {
+  grid-column: 2;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.recent-promise.is-promising {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.recent-promise.is-promising::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
 }

@@ -3,6 +3,7 @@ import type { AttendanceDate, DashboardStats, EventCategory, EventRecord, Studen
 import FunnelDrillDrawer, { type FunnelSelection } from '../components/FunnelDrillDrawer'
 import PathwayExplorer from '../components/PathwayExplorer'
 import ReachOut from '../components/ReachOut'
+import RecentContacts from '../components/RecentContacts'
 import StudentDetailDrawer from '../components/StudentDetailDrawer'
 import { trailStopLabel } from '../lib/stageLabel'
 import { colorForIndex } from '../lib/palette'
@@ -485,7 +486,10 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: strin
             </div>
           </div>
 
-          <ReachOut />
+          <div className="grid-2 dash-attention">
+            <ReachOut />
+            <RecentContacts />
+          </div>
 
           {stats.pendingDuplicates > 0 && (
             <div className="card dash-alert">

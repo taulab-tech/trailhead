@@ -583,3 +583,30 @@ export interface ReachOutSuggestion {
   lastSeen: string | null
   monthsQuiet: number | null
 }
+
+/**
+ * Somebody seen recently, and what they look like if you follow up.
+ *
+ * The other half of "worth a word": that list is people who have gone
+ * quiet or are nearly done, this one is people who turned up lately and
+ * are still warm. Sorted by when they were last seen, never by promise —
+ * a recency list reordered by score stops being a recency list.
+ */
+export interface RecentContact {
+  studentId: string
+  firstName: string
+  lastName: string
+  /** ISO date of the most recent sign of them. */
+  lastSeen: string
+  /** What that sign was — the event's name, or the term they were registered in. */
+  where: string
+  /** Events attended in total, which is what makes a returning face obvious. */
+  attendanceCount: number
+  /** The certificate they are furthest through, if they have started one. */
+  certificateName: string | null
+  percent: number | null
+  /** One checkable line: "2 CU from finishing Innovation", "3rd event". */
+  promise: string
+  /** True for the few close enough that a word now is likely to finish it. */
+  promising: boolean
+}

@@ -32,7 +32,8 @@ import {
   getDashboardStats,
   getEventStudentSets,
   getFunnelStats,
-  reachOutSuggestions
+  reachOutSuggestions,
+  recentContacts
 } from './db/dashboard'
 import { lookUpPosition } from './positionLookup'
 import { getSettings, setInstitutionNames, setLookupHelperUrl } from './db/settings'
@@ -131,6 +132,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('dashboard:stats', () => getDashboardStats())
   ipcMain.handle('dashboard:reachOut', () => reachOutSuggestions())
+  ipcMain.handle('dashboard:recentContacts', () => recentContacts())
 
   ipcMain.handle('categories:list', () => listCategories())
   ipcMain.handle('categories:create', (_e, name: string, stageOrder: number | null) =>

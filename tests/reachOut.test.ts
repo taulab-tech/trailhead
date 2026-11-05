@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { CLOSE_UNITS, GONE_MONTHS, QUIET_MONTHS, reachOutList, suggestionFor } from '../src/main/reachOut'
+import { shortCertificateName } from '../src/main/certificates'
 import type { CertificateProgress, Student, YearEstimate } from '../src/shared/types'
 
 const TODAY = new Date('2026-11-05')
@@ -199,6 +200,23 @@ test('somebody last seen years ago is gone, not drifting', () => {
     TODAY
   )
   assert.equal(s, null)
+})
+
+test('a long certificate name is shortened for the sentence, not the record', () => {
+  // "Engineering Entrepreneurship - Leading Innovative Teams" spends most of
+  // a dashboard line saying what every certificate here says.
+  assert.equal(shortCertificateName('Engineering Entrepreneurship – Leading Innovative Teams'), 'Leading Innovative Teams')
+  assert.equal(shortCertificateName('Engineering Innovation and Entrepreneurship'), 'Innovation and Entrepreneurship')
+  // Nothing to take off, so nothing is taken off.
+  assert.equal(shortCertificateName('Co-op Certificate'), 'Co-op Certificate')
+  assert.equal(shortCertificateName('Innovation'), 'Innovation')
+
+  const s = suggestionFor(
+    { student: student(), certificates: [certificate(23, 26, 'Engineering Innovation and Entrepreneurship')], lastSeen: '2026-09-01' },
+    TODAY
+  )
+  assert.equal(s?.detail, '3 CU from finishing Innovation and Entrepreneurship')
+  assert.equal(s?.certificateName, 'Engineering Innovation and Entrepreneurship', 'the record keeps the real name')
 })
 
 test('the drifting window has both ends', () => {

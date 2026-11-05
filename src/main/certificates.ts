@@ -223,3 +223,22 @@ export function certificateProgress(
     missing: missingFrom(earned.groups)
   }
 }
+
+/**
+ * A certificate's name with the part everybody already knows taken off, for
+ * use in a sentence.
+ *
+ * All three USask certificates begin "Engineering", two of them
+ * "Engineering Entrepreneurship – ", so a line like "1 CU from finishing
+ * Engineering Entrepreneurship – Leading Innovative Teams" spends most of
+ * its width saying nothing and wraps to two rows in a dashboard card. The
+ * distinguishing half is what a reader needs.
+ *
+ * The full name is still what the Certificates screen shows, and what gets
+ * exported — this is only for the running text beside somebody's name.
+ */
+export function shortCertificateName(name: string): string {
+  const afterDash = name.split(/\s[–—-]\s/).pop()?.trim()
+  if (afterDash && afterDash !== name.trim()) return afterDash
+  return name.replace(/^Engineering\s+/i, '').trim() || name
+}

@@ -1,4 +1,5 @@
 import { normalizeNsid } from '../normalize'
+import { USASK_CERTIFICATES, isUntrackedCourse } from '../certificateSeeds'
 import { splitHeadline } from '../../shared/positions'
 import { getDb, type SqlDriver } from './driver'
 
@@ -256,6 +257,8 @@ function migrateSchema(db: SqlDriver): void {
   splitCombinedPositions(db)
 
   renormalizeNsids(db)
+
+  dropUntrackedCertificateCourses(db)
 }
 
 /**
@@ -297,6 +300,80 @@ function renormalizeNsids(db: SqlDriver): void {
       if (normalized && holder.get(normalized, row.id)) continue
       update.run(normalized, row.id)
     }
+  })
+  tx()
+}
+
+/**
+ * Takes the COMM and RCM requirements out of the three starter certificates
+ * in a database seeded by an earlier build, so an existing file shows the
+ * same thing a new one does.
+ *
+ * Runs once per database and records that it has, because after this the
+ * certificates are the user's again: somebody who deliberately adds COMM 204
+ * back should not find it gone the next time they open the file.
+ *
+ * Only the three certificates the app seeded are touched, matched by name,
+ * and only their course requirements — a certificate somebody typed out
+ * themselves is left exactly as it is. The total is corrected only where it
+ * still reads as the catalogue figure the seed wrote; if it has been edited
+ * since, that edit is theirs and stands.
+ */
+export const GE_ONLY_MIGRATION_KEY = 'certificates_ge_only_v1'
+
+export function dropUntrackedCertificateCourses(db: SqlDriver): void {
+  const done = db
+    .prepare('SELECT value FROM settings WHERE key = ?')
+    .get(GE_ONLY_MIGRATION_KEY) as { value: string } | undefined
+  if (done) return
+
+  // The totals the earlier seeds wrote, by certificate name. A total that
+  // still matches is one nobody has touched.
+  const seededTotals: Record<string, number> = {
+    'Engineering Innovation and Entrepreneurship': 26,
+    'Engineering Entrepreneurship – Leading Innovative Teams': 13,
+    'Engineering Entrepreneurship – New Product Market': 13
+  }
+
+  const tx = db.transaction(() => {
+    for (const seed of USASK_CERTIFICATES) {
+      const certificate = db
+        .prepare('SELECT id, total_units FROM certificates WHERE name = ?')
+        .get(seed.name) as { id: string; total_units: number | null } | undefined
+      if (!certificate) continue
+
+      const requirements = db
+        .prepare('SELECT id, course_code FROM certificate_requirements WHERE certificate_id = ?')
+        .all(certificate.id) as { id: string; course_code: string }[]
+      const remove = db.prepare('DELETE FROM certificate_requirements WHERE id = ?')
+      for (const requirement of requirements) {
+        if (isUntrackedCourse(requirement.course_code)) remove.run(requirement.id)
+      }
+
+      // A group emptied by those deletions has nothing left to say. Children
+      // first, so a parent whose only content was a child group goes too.
+      for (let pass = 0; pass < 2; pass++) {
+        db.prepare(
+          `DELETE FROM certificate_groups
+           WHERE certificate_id = ?
+             AND id NOT IN (SELECT group_id FROM certificate_requirements WHERE certificate_id = ?)
+             AND id NOT IN (SELECT parent_id FROM certificate_groups
+                            WHERE certificate_id = ? AND parent_id IS NOT NULL)`
+        ).run(certificate.id, certificate.id, certificate.id)
+      }
+
+      if (certificate.total_units === seededTotals[seed.name] && seed.totalUnits !== null) {
+        db.prepare('UPDATE certificates SET total_units = ?, notes = ? WHERE id = ?').run(
+          seed.totalUnits,
+          seed.notes,
+          certificate.id
+        )
+      }
+    }
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(
+      GE_ONLY_MIGRATION_KEY,
+      new Date().toISOString()
+    )
   })
   tx()
 }

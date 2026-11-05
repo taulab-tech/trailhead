@@ -1,22 +1,26 @@
 import React, { useEffect, useState } from 'react'
 import type { ReachOutReason, ReachOutSuggestion } from '../../../shared/types'
 import { useDataVersion } from '../DataContext'
+import CollapsibleCard from './CollapsibleCard'
 import StudentDetailDrawer from './StudentDetailDrawer'
 
-const GROUPS: { reason: ReachOutReason; title: string; why: string }[] = [
+const GROUPS: { reason: ReachOutReason; title: string; short: string; why: string }[] = [
   {
     reason: 'close_to_finishing',
     title: 'Nearly there',
+    short: 'nearly there',
     why: 'A few credit units short. A word now is the one most likely to finish it.'
   },
   {
     reason: 'final_year',
     title: 'Last year to finish',
+    short: 'in their last year',
     why: 'In their final year with a certificate unfinished. After this they are gone.'
   },
   {
     reason: 'drifting',
     title: 'Gone quiet',
+    short: 'gone quiet',
     why: 'Started a certificate, then stopped turning up.'
   }
 ]
@@ -47,9 +51,15 @@ export default function ReachOut(): React.JSX.Element | null {
     (g) => g.people.length > 0
   )
 
+  // The header has to be worth reading on its own, because the card is shut:
+  // "3 nearly there · 12 in their last year" is a reason to open it.
+  const summary =
+    groups.length === 0
+      ? 'Nobody stands out right now'
+      : groups.map((g) => `${g.people.length} ${g.short}`).join(' · ')
+
   return (
-    <div className="card reach-out">
-      <h2 className="dash-card-title">Worth a word</h2>
+    <CollapsibleCard title="Worth a word" count={suggestions.length} summary={summary} className="reach-out">
       {groups.length === 0 ? (
         <p className="text-faint" style={{ margin: 0 }}>
           Nobody stands out right now. This fills in once students have courses on record and a
@@ -105,6 +115,6 @@ export default function ReachOut(): React.JSX.Element | null {
           onChanged={bump}
         />
       )}
-    </div>
+    </CollapsibleCard>
   )
 }

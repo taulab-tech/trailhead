@@ -218,7 +218,7 @@ function GroupEditor({
         <button
           className="review-link"
           onClick={async () => {
-            const name = prompt('Name for the rule within this group, e.g. "COMM electives"')
+            const name = prompt('Name for the rule within this group, e.g. "400-level electives"')
             if (!name) return
             const min = prompt('How many credit units must come from it?', '3')
             if (min === null) return

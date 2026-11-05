@@ -14,3 +14,6 @@ dist-web
 
 worker/node_modules
 worker/.wrangler
+
+# Throwaway fixture databases from tools/make-fixture.ts
+src/web/public/

@@ -2,9 +2,9 @@ import { getDb } from './index'
 import { listStudents } from './students'
 import { listStudentCourses } from './courses'
 import { listCertificateDefinitions } from './certificates'
-import { certificateProgress } from '../certificates'
-import { reachOutList } from '../reachOut'
-import type { ReachOutSuggestion } from '../../shared/types'
+import { certificateProgress, shortCertificateName } from '../certificates'
+import { CLOSE_UNITS, reachOutList } from '../reachOut'
+import type { ReachOutSuggestion, RecentContact } from '../../shared/types'
 import { findCategoryByName } from './categories'
 import { getPendingDuplicateCount } from './duplicates'
 import { parseEnrolYear, enrolDateFor } from '../enrolDate'
@@ -219,6 +219,64 @@ export function getDashboardStats(): DashboardStats {
   }
 }
 
+/** The most recent sign of a student, and what that sign was. */
+interface LastSeen {
+  date: string
+  where: string
+}
+
+const TERM_MONTHS: Record<string, string> = {
+  '01': 'Winter',
+  '05': 'Spring',
+  '07': 'Summer',
+  '09': 'Fall'
+}
+
+/** "202509" as people say it: "Fall 2025". */
+function termLabel(term: string): string | null {
+  const match = term.match(/^(\d{4})(\d{2})$/)
+  if (!match) return null
+  const season = TERM_MONTHS[match[2]]
+  return season ? `${season} ${match[1]}` : match[1]
+}
+
+/**
+ * When each student was last seen, and where.
+ *
+ * Two sources, because the two halves of this data are kept apart: an event
+ * with a date on it, and a term a student was registered in. A class list
+ * carries no event date, so without the terms every class-only student
+ * looks like somebody nobody has seen in years.
+ */
+function lastSeenByStudent(): Map<string, LastSeen> {
+  const db = getDb()
+  const seen = new Map<string, LastSeen>()
+  const note = (id: string, date: string | null, where: string): void => {
+    if (!date) return
+    const current = seen.get(id)
+    if (!current || date > current.date) seen.set(id, { date, where })
+  }
+
+  for (const row of db
+    .prepare(
+      `SELECT a.student_id AS id, e.date AS date, e.name AS name FROM attendances a
+       JOIN events e ON e.id = a.event_id WHERE e.date IS NOT NULL`
+    )
+    .all() as { id: string; date: string; name: string }[]) {
+    note(row.id, row.date, row.name)
+  }
+
+  for (const row of db
+    .prepare("SELECT student_id AS id, term, course_code AS code FROM student_courses WHERE term != ''")
+    .all() as { id: string; term: string; code: string }[]) {
+    const label = termLabel(row.term)
+    if (!label) continue
+    note(row.id, `${row.term.slice(0, 4)}-${row.term.slice(4)}-01`, `${row.code}, ${label}`)
+  }
+
+  return seen
+}
+
 /**
  * Who to contact, worked out from certificate progress and how long it has
  * been since anybody saw them.
@@ -227,32 +285,9 @@ export function getDashboardStats(): DashboardStats {
  * without a database behind them.
  */
 export function reachOutSuggestions(): ReachOutSuggestion[] {
-  const db = getDb()
   const definitions = listCertificateDefinitions()
   if (definitions.length === 0) return []
-
-  // The most recent sign of each student: an event they attended, or a term
-  // they were registered in.
-  const lastSeen = new Map<string, string>()
-  const note = (id: string, date: string | null): void => {
-    if (!date) return
-    const current = lastSeen.get(id)
-    if (!current || date > current) lastSeen.set(id, date)
-  }
-  for (const row of db
-    .prepare(
-      `SELECT a.student_id AS id, e.date AS date FROM attendances a
-       JOIN events e ON e.id = a.event_id WHERE e.date IS NOT NULL`
-    )
-    .all() as { id: string; date: string }[]) {
-    note(row.id, row.date)
-  }
-  for (const row of db
-    .prepare("SELECT student_id AS id, term FROM student_courses WHERE term != ''")
-    .all() as { id: string; term: string }[]) {
-    const match = row.term.match(/^(\d{4})(\d{2})$/)
-    if (match) note(row.id, `${match[1]}-${match[2]}-01`)
-  }
+  const seen = lastSeenByStudent()
 
   return reachOutList(
     listStudents().map((student) => ({
@@ -260,7 +295,67 @@ export function reachOutSuggestions(): ReachOutSuggestion[] {
       certificates: definitions.map((definition) =>
         certificateProgress(definition, listStudentCourses(student.id))
       ),
-      lastSeen: lastSeen.get(student.id) ?? null
+      lastSeen: seen.get(student.id)?.date ?? null
     }))
   )
+}
+
+/** How many recent contacts to work out. More than anybody reads in a sitting. */
+const RECENT_LIMIT = 24
+
+/**
+ * The students seen most recently, with what following up on each would be
+ * worth.
+ *
+ * Sorted by date only. Certificate progress is computed for the handful
+ * that come back rather than for everybody, because working out three
+ * certificates for six hundred students to show twelve names is most of a
+ * second of somebody's afternoon for nothing.
+ */
+export function recentContacts(limit = RECENT_LIMIT): RecentContact[] {
+  const seen = [...lastSeenByStudent()]
+    .sort((a, b) => b[1].date.localeCompare(a[1].date))
+    .slice(0, limit)
+  if (seen.length === 0) return []
+
+  const definitions = listCertificateDefinitions()
+  const byId = new Map(listStudents().map((student) => [student.id, student]))
+
+  const contacts: RecentContact[] = []
+  for (const [studentId, when] of seen) {
+    const student = byId.get(studentId)
+    if (!student) continue
+
+    const courses = definitions.length > 0 ? listStudentCourses(studentId) : []
+    const started = definitions
+      .map((definition) => certificateProgress(definition, courses))
+      .filter((progress) => progress.earnedUnits > 0)
+      .sort((a, b) => b.percent - a.percent)
+    const best = started[0] ?? null
+    const remaining = best ? Math.max(0, best.totalUnits - best.earnedUnits) : null
+
+    // One line anybody can check, strongest true thing first.
+    const label = best ? shortCertificateName(best.name) : ''
+    let promise: string
+    if (best?.complete) promise = `Finished ${label}`
+    else if (remaining !== null && remaining <= CLOSE_UNITS) {
+      promise = `${remaining} CU from finishing ${label}`
+    } else if (best) promise = `${best.percent}% through ${label}`
+    else if (student.attendanceCount > 1) promise = `${student.attendanceCount} events so far`
+    else promise = 'First time here'
+
+    contacts.push({
+      studentId,
+      firstName: student.firstName,
+      lastName: student.lastName,
+      lastSeen: when.date,
+      where: when.where,
+      attendanceCount: student.attendanceCount,
+      certificateName: best?.name ?? null,
+      percent: best?.percent ?? null,
+      promise,
+      promising: remaining !== null && remaining > 0 && remaining <= CLOSE_UNITS
+    })
+  }
+  return contacts
 }

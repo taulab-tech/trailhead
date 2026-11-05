@@ -7,10 +7,11 @@ import path from 'path'
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'trailhead-certs-'))
 process.env.TRAILHEAD_DB_PATH = path.join(tmpDir, 'test.db')
 
-import { getDb, wipeDatabase } from '../src/main/db'
+import { GE_ONLY_MIGRATION_KEY, dropUntrackedCertificateCourses, getDb, wipeDatabase } from '../src/main/db'
 import { openDb } from '../src/main/db/desktop'
 import { certificateProgress, normalizeCourseCode, totalUnitsFor } from '../src/main/certificates'
 import {
+  addRequirement,
   certificateRoster,
   getCertificate,
   installCertificate,
@@ -19,7 +20,7 @@ import {
   setStudentCertificate,
   studentCertificates
 } from '../src/main/db/certificates'
-import { USASK_CERTIFICATES } from '../src/main/certificateSeeds'
+import { USASK_CERTIFICATES, isUntrackedCourse } from '../src/main/certificateSeeds'
 import { recordStudentCourse } from '../src/main/db/courses'
 import { createStudent } from '../src/main/db/students'
 import type { CertificateDefinition, StudentCourse } from '../src/shared/types'
@@ -251,6 +252,20 @@ test('the three College of Engineering certificates add up to their stated total
   }
 })
 
+test('no starter certificate asks for a course the app never sees', () => {
+  // COMM and RCM courses appear in no class list the College of Engineering
+  // exports. Requiring one would hold every student permanently short and
+  // make the progress bar meaningless, so the seeds track the GE side only.
+  for (const seed of USASK_CERTIFICATES) {
+    const codes = seed.groups.flatMap(function collect(group): string[] {
+      return [...group.courses.map((c) => c.code), ...(group.children ?? []).flatMap(collect)]
+    })
+    for (const code of codes) {
+      assert.equal(isUntrackedCourse(code), false, `${seed.name} should not require ${code}`)
+    }
+  }
+})
+
 test('the starter certificates go in when asked for, and only once', () => {
   assert.equal(installStarterCertificates(), 3)
   assert.equal(listCertificates().length, 3)
@@ -262,10 +277,13 @@ test('a student who has finished the Innovation certificate reads as finished', 
   installStarterCertificates()
   const innovation = listCertificates().find((c) => c.name.startsWith('Engineering Innovation'))!
   const definitionFromDb = getCertificate(innovation.id)!
-  assert.equal(totalUnitsFor(definitionFromDb), 26)
+  assert.equal(totalUnitsFor(definitionFromDb), 14)
 
   const student = createStudent({ firstName: 'Priya', lastName: 'Raman' })
-  for (const code of ['COMM 201', 'GE 431', 'GE 450', 'GE 451', 'GE 490', 'GE 495', 'COMM 204', 'RCM 402']) {
+  // The business courses are on her transcript and count for nothing here:
+  // the app never receives a record of them, so the certificate it tracks
+  // does not ask for them.
+  for (const code of ['COMM 201', 'COMM 204', 'RCM 402', 'GE 431', 'GE 450', 'GE 451', 'GE 490']) {
     recordStudentCourse({
       studentId: student,
       courseCode: code,
@@ -275,13 +293,13 @@ test('a student who has finished the Innovation certificate reads as finished', 
   }
 
   const progress = studentCertificates(student).find((c) => c.certificateId === innovation.id)!
-  // 17 required + 3 COMM + 3 RCM = 23 of 26; still 3 elective units short.
-  assert.equal(progress.earnedUnits, 23)
+  // 3 + 3 + 1 + 1 of 14 — the six-unit capstone is still outstanding.
+  assert.equal(progress.earnedUnits, 8)
   assert.equal(progress.complete, false)
 
-  recordStudentCourse({ studentId: student, courseCode: 'RCM 404', term: '202601', status: 'completed' })
+  recordStudentCourse({ studentId: student, courseCode: 'GE 495', term: '202601', status: 'completed' })
   const done = studentCertificates(student).find((c) => c.certificateId === innovation.id)!
-  assert.equal(done.earnedUnits, 26)
+  assert.equal(done.earnedUnits, 14)
   assert.equal(done.percent, 100)
   assert.equal(done.complete, true)
 })
@@ -291,12 +309,125 @@ test('a capstone from another discipline counts for the Innovation certificate',
   const innovation = listCertificates().find((c) => c.name.startsWith('Engineering Innovation'))!
 
   const student = createStudent({ firstName: 'Marcus', lastName: 'Webb' })
-  for (const code of ['COMM 201', 'GE 431', 'GE 450', 'GE 451', 'GE 490', 'ME 495', 'GE 496', 'COMM 204', 'RCM 402', 'RCM 404']) {
+  for (const code of ['GE 431', 'GE 450', 'GE 451', 'GE 490', 'ME 495', 'GE 496']) {
     recordStudentCourse({ studentId: student, courseCode: code, term: '202509', status: 'completed' })
   }
 
   const progress = studentCertificates(student).find((c) => c.certificateId === innovation.id)!
   assert.equal(progress.complete, true, 'ME 495 with GE 496 stands in for GE 495')
+})
+
+/* ------------------------- the one-time migration ----------------------- */
+
+/** The Innovation certificate as an earlier build seeded it. */
+const OLD_INNOVATION = {
+  name: 'Engineering Innovation and Entrepreneurship',
+  totalUnits: 26,
+  notes: 'College of Engineering.',
+  groups: [
+    {
+      name: 'Required courses',
+      kind: 'required' as const,
+      courses: [
+        { code: 'COMM 201', units: 3 },
+        { code: 'GE 431', units: 3 },
+        { code: 'GE 450', units: 3 },
+        { code: 'GE 451', units: 1 },
+        { code: 'GE 490', units: 1 },
+        { code: 'GE 495', units: 6 }
+      ]
+    },
+    {
+      name: 'Electives',
+      kind: 'elective' as const,
+      minUnits: 9,
+      courses: [
+        { code: 'RCM 402', units: 3 },
+        { code: 'RCM 404', units: 3 },
+        { code: 'RCM 409', units: 3 }
+      ],
+      children: [
+        {
+          name: 'COMM electives',
+          kind: 'elective' as const,
+          minUnits: 3,
+          courses: [
+            { code: 'COMM 204', units: 3 },
+            { code: 'COMM 205', units: 3 }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+function runMigrationAfresh(): void {
+  getDb().prepare('DELETE FROM settings WHERE key = ?').run(GE_ONLY_MIGRATION_KEY)
+  dropUntrackedCertificateCourses(getDb())
+}
+
+test('an older database loses its COMM and RCM requirements on open', () => {
+  installCertificate(OLD_INNOVATION)
+  runMigrationAfresh()
+
+  const after = listCertificates().find((c) => c.name.startsWith('Engineering Innovation'))!
+  const definition = getCertificate(after.id)!
+  assert.deepEqual(
+    definition.requirements.map((r) => r.courseCode).sort(),
+    ['GE 431', 'GE 450', 'GE 451', 'GE 490', 'GE 495']
+  )
+  // The elective group and the COMM group inside it held nothing else.
+  assert.deepEqual(definition.groups.map((g) => g.name), ['Required courses'])
+  assert.equal(definition.totalUnits, 14)
+})
+
+test('a student in an older database gains the units they were held short by', () => {
+  installCertificate(OLD_INNOVATION)
+  const student = createStudent({ firstName: 'Priya', lastName: 'Raman' })
+  for (const code of ['GE 431', 'GE 450', 'GE 451', 'GE 490', 'GE 495']) {
+    recordStudentCourse({ studentId: student, courseCode: code, term: '202509', status: 'completed' })
+  }
+  const before = studentCertificates(student)[0]
+  assert.equal(before.complete, false, 'held short by nine units of COMM and RCM')
+
+  runMigrationAfresh()
+  const after = studentCertificates(student)[0]
+  assert.equal(after.complete, true)
+  assert.equal(after.percent, 100)
+})
+
+test('the migration runs once and then leaves the certificates alone', () => {
+  installCertificate(OLD_INNOVATION)
+  runMigrationAfresh()
+
+  // Somebody adds a business course back by hand, because they now have the
+  // records for it. Opening the file again must not take it away.
+  const certificate = listCertificates()[0]
+  const definition = getCertificate(certificate.id)!
+  addRequirement(definition.groups[0].id, 'COMM 204', 3)
+
+  dropUntrackedCertificateCourses(getDb())
+  assert.ok(
+    getCertificate(certificate.id)!.requirements.some((r) => r.courseCode === 'COMM 204'),
+    'what the user put in stays in'
+  )
+})
+
+test('a certificate somebody typed out themselves is not touched', () => {
+  installCertificate({
+    name: 'Our own certificate',
+    totalUnits: 6,
+    notes: null,
+    groups: [{ name: 'Courses', kind: 'required', courses: [{ code: 'COMM 204', units: 3 }, { code: 'GE 431', units: 3 }] }]
+  })
+  runMigrationAfresh()
+
+  const mine = listCertificates().find((c) => c.name === 'Our own certificate')!
+  assert.deepEqual(
+    getCertificate(mine.id)!.requirements.map((r) => r.courseCode).sort(),
+    ['COMM 204', 'GE 431']
+  )
+  assert.equal(getCertificate(mine.id)!.totalUnits, 6)
 })
 
 /* -------------------------------- roster -------------------------------- */

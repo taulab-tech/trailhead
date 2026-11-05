@@ -1,3 +1,4 @@
+import { shortCertificateName } from './certificates'
 import type {
   CertificateProgress,
   ReachOutReason,
@@ -88,7 +89,7 @@ export function suggestionFor(input: ReachOutInput, today: Date = new Date()): R
     return {
       ...base,
       reason: 'close_to_finishing' as ReachOutReason,
-      detail: `${units(remaining)} CU from finishing ${certificate.name}`
+      detail: `${units(remaining)} CU from finishing ${shortCertificateName(certificate.name)}`
     }
   }
 
@@ -98,7 +99,7 @@ export function suggestionFor(input: ReachOutInput, today: Date = new Date()): R
     return {
       ...base,
       reason: 'final_year' as ReachOutReason,
-      detail: `In their last year, ${units(remaining)} CU short of ${certificate.name}`
+      detail: `In their last year, ${units(remaining)} CU short of ${shortCertificateName(certificate.name)}`
     }
   }
 
@@ -107,7 +108,7 @@ export function suggestionFor(input: ReachOutInput, today: Date = new Date()): R
     return {
       ...base,
       reason: 'drifting' as ReachOutReason,
-      detail: `${certificate.percent}% through ${certificate.name}, not seen in ${quiet} months`
+      detail: `${certificate.percent}% through ${shortCertificateName(certificate.name)}, not seen in ${quiet} months`
     }
   }
 
