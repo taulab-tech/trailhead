@@ -12,10 +12,19 @@ export interface AppSettings {
    * lookup, and the app offers to open the search in a tab instead.
    */
   lookupHelperUrl: string | null
+  /**
+   * A Serper key, if one has been pasted in. It lets the app read search
+   * results itself instead of opening a tab for somebody to read — which
+   * is the only way the lookup works on a computer you cannot install
+   * anything on. Held in this database file and sent to nobody but the
+   * search service it authenticates against.
+   */
+  searchApiKey: string | null
 }
 
 const INSTITUTION_KEY = 'institution_names'
 const HELPER_KEY = 'lookup_helper_url'
+const SEARCH_KEY = 'search_api_key'
 
 function read(key: string): string | null {
   const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as
@@ -28,7 +37,8 @@ export function getSettings(): AppSettings {
   const names = read(INSTITUTION_KEY)
   return {
     institutionNames: names ? (JSON.parse(names) as string[]) : [],
-    lookupHelperUrl: read(HELPER_KEY)
+    lookupHelperUrl: read(HELPER_KEY),
+    searchApiKey: read(SEARCH_KEY)
   }
 }
 
@@ -75,4 +85,18 @@ export function setInstitutionNames(names: string[]): string[] {
     db.prepare('DELETE FROM settings WHERE key = ?').run(INSTITUTION_KEY)
   }
   return clean
+}
+
+/** Saves the search key, or clears it when given nothing. */
+export function setSearchApiKey(key: string | null): string | null {
+  const db = getDb()
+  const trimmed = (key ?? '').trim()
+  if (!trimmed) {
+    db.prepare('DELETE FROM settings WHERE key = ?').run(SEARCH_KEY)
+    return null
+  }
+  db.prepare(
+    'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+  ).run(SEARCH_KEY, trimmed)
+  return trimmed
 }

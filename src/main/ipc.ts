@@ -198,6 +198,11 @@ export function registerIpcHandlers(): void {
   // needed here; the setting exists so one database works in both.
   ipcMain.handle('settings:setLookupHelperUrl', (_e, url: string | null) => setLookupHelperUrl(url))
   ipcMain.handle('settings:checkLookupHelper', () => false)
+  // The desktop build searches through its own Python helper, so a key is
+  // neither stored nor needed; the handlers exist so the shared screens can
+  // call them without knowing which build they are in.
+  ipcMain.handle('settings:setSearchApiKey', () => null)
+  ipcMain.handle('settings:checkSearchApiKey', () => false)
   // The desktop always has its own Python to search with.
   ipcMain.handle('settings:lookupAvailable', () => true)
 

@@ -4,17 +4,22 @@
     <meta charset="UTF-8" />
     <!--
       The page can load scripts, styles and its WebAssembly from its own
-      origin and from nowhere else. `connect-src 'self'` is what stops it
-      sending anything out: there is no host it is permitted to talk to, so
-      student data cannot leave this machine even if something tried.
+      origin and from nowhere else, and `connect-src` names every host it is
+      allowed to talk to. Student data cannot leave this machine by any
+      other route, even if something tried.
       'wasm-unsafe-eval' is what lets SQLite's WebAssembly compile; it grants
       no access to the network or the page's origin.
       The two localhost entries are for the optional lookup helper, which
-      runs on the user's own computer. They permit nothing off the machine.
+      runs on the user's own computer and permits nothing off the machine.
+      google.serper.dev is the search service used to look a student up on
+      LinkedIn. It is sent one thing and one thing only — the name being
+      searched — and only when somebody presses the button, which until now
+      opened a search tab carrying that same name. Nothing else on a student
+      record is ever sent anywhere.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:* http://localhost:*; worker-src 'self'; form-action 'none'; base-uri 'self'"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://google.serper.dev; worker-src 'self'; form-action 'none'; base-uri 'self'"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />

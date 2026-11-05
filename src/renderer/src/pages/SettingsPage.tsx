@@ -19,6 +19,9 @@ export default function SettingsPage({
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<string | null>(null)
+  const [keyDraft, setKeyDraft] = useState('')
+  const [keyStatus, setKeyStatus] = useState<string | null>(null)
+  const [checkingKey, setCheckingKey] = useState(false)
   const [wiping, setWiping] = useState(false)
   const [wipeStatus, setWipeStatus] = useState<string | null>(null)
 
@@ -30,11 +33,32 @@ export default function SettingsPage({
     window.api.getSettings().then((s) => {
       setSaved(s.institutionNames)
       setDraft(s.institutionNames.join(', '))
+      setKeyDraft(s.searchApiKey ?? '')
       setLoading(false)
     })
   }, [])
 
   const dirty = splitNames(draft).join('|') !== saved.join('|')
+
+  const saveKey = async (): Promise<void> => {
+    setCheckingKey(true)
+    setKeyStatus(null)
+    try {
+      const trimmed = keyDraft.trim()
+      if (trimmed && !(await window.api.checkSearchApiKey(trimmed))) {
+        setKeyStatus('That key was not accepted. Check it and try again.')
+        return
+      }
+      const stored = await window.api.setSearchApiKey(trimmed || null)
+      setKeyDraft(stored ?? '')
+      setKeyStatus(stored ? 'Working — lookups will run in the app now.' : 'Cleared.')
+      onChanged()
+    } catch (err) {
+      setKeyStatus(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCheckingKey(false)
+    }
+  }
 
   const save = async (): Promise<void> => {
     const result = await window.api.setInstitutionNames(splitNames(draft))
@@ -72,6 +96,48 @@ export default function SettingsPage({
           <p>Details about your program, and housekeeping for your student records.</p>
         </div>
       </div>
+
+      {window.api.capabilities.needsSearchKey && (
+        <div className="card settings-card" id="lookup-key">
+          <div className="settings-row">
+            <div className="settings-copy">
+              <h3>Looking people up</h3>
+              <p>
+                Without a key, the LinkedIn button opens a search in a new tab for you to read. With
+                one, the app does the search itself and shows you the profiles to pick from — which
+                is the only version that works on a computer you can&rsquo;t install anything on.
+              </p>
+              <p>
+                Get one free at <code>serper.dev</code> — sign in, copy the key from the dashboard,
+                paste it here. It is 2,500 searches and asks for no card. The key is saved in your
+                database file. The only thing ever sent is the name you are searching for, which is
+                what the tab was carrying anyway.
+              </p>
+            </div>
+            <div className="settings-control">
+              <label htmlFor="search-key">Search key</label>
+              <input
+                id="search-key"
+                type="password"
+                autoComplete="off"
+                placeholder="paste it here"
+                value={keyDraft}
+                disabled={loading}
+                onChange={(e) => {
+                  setKeyDraft(e.target.value)
+                  setKeyStatus(null)
+                }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+                <button className="btn btn-primary btn-sm" disabled={checkingKey} onClick={saveKey}>
+                  {checkingKey ? 'Checking…' : 'Save'}
+                </button>
+                {keyStatus && <span className="text-faint">{keyStatus}</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card settings-card">
         <div className="settings-row">

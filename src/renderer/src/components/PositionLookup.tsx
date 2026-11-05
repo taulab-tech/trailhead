@@ -42,8 +42,8 @@ export default function PositionLookup({
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [hasInstitution, setHasInstitution] = useState(true)
-  // The desktop searches through its own Python; the web build can only do
-  // it when the local helper is set up.
+  // The desktop searches through its own Python; on the web this follows
+  // whether a search key has been pasted in.
   const [canSearch, setCanSearch] = useState(window.api.capabilities.positionLookup)
 
   useEffect(() => {
@@ -279,9 +279,8 @@ export default function PositionLookup({
             </div>
             <p className="position-note">
               Opens the search in a new tab for you to read, then paste what you find back here. To
-              get the results in here instead, start the lookup helper on this computer
-              (<code>python trailhead_lookup.py</code>) &mdash; the app finds it on its own, no
-              setting up.
+              get the profiles in here instead, with nothing to install, add a free search key in
+              Settings &mdash; it takes a minute and then this button does the reading for you.
             </p>
           </>
         )

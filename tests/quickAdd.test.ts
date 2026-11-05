@@ -248,3 +248,18 @@ test('an alum who is nearly done with a certificate is still not chased for it',
   const step = nextStepFor({ ...base, isAlumni: true, certificates: [certificate(11)] })
   assert.doesNotMatch(step.action, /finishing/)
 })
+
+test('somebody on record who has never turned up is not called a first-timer', () => {
+  // The card says "on record already"; the reason beside it must not say
+  // the opposite.
+  const step = nextStepFor({ ...base, isNew: false, attendanceCount: 1 })
+  assert.match(step.because, /On record, but this is the first event/)
+})
+
+test('a long certificate name is shortened in the suggestion too', () => {
+  const step = nextStepFor({
+    ...base,
+    certificates: [certificate(11, 14, 'Engineering Entrepreneurship – Leading Innovative Teams')]
+  })
+  assert.equal(step.action, 'Ask about finishing Leading Innovative Teams')
+})

@@ -323,6 +323,7 @@ export interface AppSettings {
   institutionNames: string[]
   /** Where the local lookup helper is listening, or null if it isn't used. */
   lookupHelperUrl: string | null
+  searchApiKey: string | null
 }
 
 /** One student's place in the background LinkedIn lookup queue. */
@@ -360,11 +361,11 @@ export interface AppCapabilities {
   /** Whether a lookup can be run right now. On the web this follows the helper. */
   positionLookup: boolean
   /**
-   * Whether this build searches through a helper on the user's computer.
-   * True for the web build whether or not one is currently running, so the
-   * setting for it doesn't disappear the moment it starts working.
+   * Whether this build needs a search key pasted in to look people up.
+   * True on the web, where the page cannot read a search engine's reply
+   * on its own; false on the desktop, which has its own helper.
    */
-  usesLocalLookupHelper: boolean
+  needsSearchKey: boolean
   /**
    * Whether the app owns a database file it can swap out from under itself.
    * The desktop build does; on the web the user opens a file themselves, so

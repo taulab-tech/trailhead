@@ -21,7 +21,7 @@ import {
   reachOutSuggestions,
   recentContacts
 } from '../main/db/dashboard'
-import { getSettings, setInstitutionNames, setLookupHelperUrl } from '../main/db/settings'
+import { getSettings, setInstitutionNames, setLookupHelperUrl, setSearchApiKey } from '../main/db/settings'
 import { lookUpPosition, setSearchTransport } from '../main/positionLookup'
 import {
   dismissLookups,
@@ -33,6 +33,7 @@ import {
   stopLookups
 } from '../main/lookupQueue'
 import { detectHelper, helperIsRunning, helperSearch } from './lookupHelper'
+import { serperKeyWorks, serperSearch } from './serperSearch'
 import { markFieldsManual } from '../main/db/fieldSources'
 import {
   addRequirement,
@@ -94,28 +95,42 @@ const NO_LOOKUPS: LookupStatus = {
 }
 
 /**
- * Points the lookup at the helper, if one is set up. Returns false when
- * there is none, which is how every lookup call decides whether to run.
+ * How this session can reach a search engine, if it can at all.
+ *
+ * A search key is preferred over the local helper: it needs nothing
+ * installed, so it is the one that works on a university computer, and it
+ * is the one somebody chose deliberately by pasting a key in. The helper
+ * stays as the fallback for anyone already running it.
  */
-/** The helper we found, if any. Re-checked whenever a lookup is asked for. */
 let helperUrl: string | null = null
+let searchKey: string | null = null
 
 function searchIsReady(): boolean {
-  if (!helperUrl) return false
-  setSearchTransport(helperSearch(helperUrl))
-  return true
+  if (searchKey) {
+    setSearchTransport(serperSearch(searchKey))
+    return true
+  }
+  if (helperUrl) {
+    setSearchTransport(helperSearch(helperUrl))
+    return true
+  }
+  return false
 }
 
 /**
- * Looks for the helper and tells the screens whether to offer the lookup.
+ * Works out whether the lookup can run, and tells the screens.
  *
  * Run when a database is opened and again whenever somebody asks for a
- * lookup, so starting the helper mid-session is picked up without a reload.
+ * lookup, so a key pasted in mid-session is picked up without a reload.
  */
 export async function refreshLookupCapability(): Promise<boolean> {
-  helperUrl = await detectHelper(getSettings().lookupHelperUrl)
-  webApi.capabilities.positionLookup = helperUrl !== null
-  return helperUrl !== null
+  const settings = getSettings()
+  searchKey = settings.searchApiKey
+  // Only go looking for the helper when there is no key; it is a request to
+  // a port that is usually closed, and there is no reason to make it.
+  helperUrl = searchKey ? null : await detectHelper(settings.lookupHelperUrl)
+  webApi.capabilities.positionLookup = searchIsReady()
+  return webApi.capabilities.positionLookup
 }
 
 function lookupsUnavailable(): never {
@@ -125,7 +140,7 @@ function lookupsUnavailable(): never {
 }
 
 export const webApi = {
-  capabilities: { positionLookup: false, usesLocalLookupHelper: true, restoreFromBackup: false } as AppCapabilities,
+  capabilities: { positionLookup: false, needsSearchKey: true, restoreFromBackup: false } as AppCapabilities,
 
   // The renderer treats this as an opaque handle, so a reference to the file
   // held in memory does the same job as a path on disk.
@@ -188,6 +203,13 @@ export const webApi = {
     return saved
   },
   checkLookupHelper: async (url: string) => helperIsRunning(url),
+  setSearchApiKey: async (key: string | null) => {
+    const saved = setSearchApiKey(key)
+    await refreshLookupCapability()
+    await save()
+    return saved
+  },
+  checkSearchApiKey: async (key: string) => serperKeyWorks(key),
   /** Whether a lookup can be run right now. Checks for the helper afresh. */
   lookupAvailable: async () => refreshLookupCapability(),
 

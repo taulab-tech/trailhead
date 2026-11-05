@@ -1,3 +1,4 @@
+import { shortCertificateName } from './certificates'
 import { CLOSE_UNITS, QUIET_MONTHS } from './reachOut'
 import type { CertificateProgress } from '../shared/types'
 
@@ -72,13 +73,17 @@ export function nextStepFor(input: NextStepInput): NextStep {
   const certificate = furthestCertificate(certificates)
   const remaining = certificate ? Math.max(0, certificate.totalUnits - certificate.earnedUnits) : null
 
-  // Never met before: the next step is the introduction.
+  // Nothing to go on yet: the next step is the introduction. Somebody
+  // created today and somebody who was on a list but has never turned up
+  // both land here, and they are not the same thing to say out loud.
   if (input.isNew || input.attendanceCount <= 1) {
     return {
       action: trail.nextStopName
         ? `Tell them about ${trail.nextStopName}`
         : 'Tell them what else runs this term',
-      because: 'First time on record — nothing else is known about them yet'
+      because: input.isNew
+        ? 'First time on record — nothing else is known about them yet'
+        : 'On record, but this is the first event they have been to'
     }
   }
 
@@ -92,7 +97,7 @@ export function nextStepFor(input: NextStepInput): NextStep {
   // A certificate within reach is the most concrete thing there is to say.
   if (certificate && remaining !== null && remaining > 0 && remaining <= CLOSE_UNITS) {
     return {
-      action: `Ask about finishing ${certificate.name}`,
+      action: `Ask about finishing ${shortCertificateName(certificate.name)}`,
       because: `${units(remaining)} CU short of it`
     }
   }
@@ -117,7 +122,7 @@ export function nextStepFor(input: NextStepInput): NextStep {
   // At the end of the trail with a certificate on the go.
   if (trail.atEnd && certificate) {
     return {
-      action: `Keep them going on ${certificate.name}`,
+      action: `Keep them going on ${shortCertificateName(certificate.name)}`,
       because: `${certificate.percent}% through it, and at the end of the trail`
     }
   }

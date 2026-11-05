@@ -32,7 +32,7 @@ import type {
 } from '../shared/types'
 
 const api = {
-  capabilities: { positionLookup: true, usesLocalLookupHelper: false, restoreFromBackup: true } as AppCapabilities,
+  capabilities: { positionLookup: true, needsSearchKey: false, restoreFromBackup: true } as AppCapabilities,
 
   getPathForFile: (file: File): string => webUtils.getPathForFile(file),
   pickFiles: (): Promise<string[]> => ipcRenderer.invoke('dialog:openFiles'),
@@ -153,6 +153,10 @@ const api = {
     ipcRenderer.invoke('settings:setLookupHelperUrl', url),
   checkLookupHelper: (url: string): Promise<boolean> =>
     ipcRenderer.invoke('settings:checkLookupHelper', url),
+  setSearchApiKey: (key: string | null): Promise<string | null> =>
+    ipcRenderer.invoke('settings:setSearchApiKey', key),
+  checkSearchApiKey: (key: string): Promise<boolean> =>
+    ipcRenderer.invoke('settings:checkSearchApiKey', key),
   lookupAvailable: (): Promise<boolean> => ipcRenderer.invoke('settings:lookupAvailable'),
 
   backupDatabase: (): Promise<string | null> => ipcRenderer.invoke('db:backup'),

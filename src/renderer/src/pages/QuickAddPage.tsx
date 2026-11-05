@@ -46,7 +46,7 @@ function PersonCard({
           <span className="badge badge-new">First outreach</span>
         ) : (
           <span className="badge chip-neutral">
-            {person.attendanceCount === 2 ? '2nd time' : `${person.attendanceCount} events`}
+            {person.attendanceCount === 1 ? '1 event' : `${person.attendanceCount} events`}
           </span>
         )}
       </div>
@@ -291,7 +291,10 @@ export default function QuickAddPage({
 
           {result.unreadable.length > 0 && (
             <div className="qa-problems">
-              <strong>{result.unreadable.length} lines could not be read</strong>
+              <strong>
+                {result.unreadable.length} {result.unreadable.length === 1 ? 'line' : 'lines'} could not
+                be read
+              </strong>
               <ul>
                 {result.unreadable.map((line, i) => (
                   <li key={i}>
