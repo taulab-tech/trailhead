@@ -97,13 +97,20 @@ export async function save(): Promise<void> {
   publish({ saving: true, error: null })
   const bytes = db.export()
   try {
+    // Written first, so a crash midway through the real write still has
+    // something to fall back on.
     await saveRecoveryCopy(bytes)
     if (handle) {
       await writeToHandle(handle, bytes)
+      // Safely in the user's own file now, so the browser's copy is no
+      // longer holding anything. Keeping it would both leave student
+      // records sitting in the browser profile for no reason and make the
+      // start screen claim there is unsaved work when there isn't.
+      await clearRecoveryCopy()
       publish({ saving: false, unsavedChanges: false, lastSavedAt: new Date() })
     } else {
-      // Nowhere to write to; the recovery copy is holding the work until the
-      // user downloads the file.
+      // Nowhere to write to, so the recovery copy is what is holding the
+      // work until the user downloads the file.
       publish({ saving: false })
     }
   } catch (error) {
@@ -111,11 +118,23 @@ export async function save(): Promise<void> {
   }
 }
 
+/**
+ * Throws away the browser's copy without opening it — for somebody who
+ * doesn't want a database sitting in the browser profile, or who knows the
+ * copy is older than the file they have.
+ */
+export async function discardRecoveryCopy(): Promise<void> {
+  await clearRecoveryCopy()
+}
+
 /** Saves the database as a download, for browsers without file handles. */
 export function downloadDatabase(fileName = state.fileName ?? DEFAULT_DB_NAME): void {
   if (!db) return
   downloadBytes(fileName, db.export())
   publish({ unsavedChanges: false, lastSavedAt: new Date() })
+  // They have the file now, so the browser's copy is no longer the only
+  // place the work exists.
+  void clearRecoveryCopy()
 }
 
 /** Points the session at a different file and writes the database there. */

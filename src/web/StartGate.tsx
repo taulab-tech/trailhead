@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import Logo from '../renderer/src/components/Logo'
-import { openSession, recoverSession, startNewSession } from './session'
+import { discardRecoveryCopy, openSession, recoverSession, startNewSession } from './session'
 import {
   createDatabaseFile,
   loadRecoveryCopy,
@@ -133,11 +133,25 @@ export default function StartGate({ onOpened }: { onOpened: () => void }): React
 
         {recovery && (
           <div className="gate-recovery">
-            <strong>Unsaved work found.</strong> This browser has a copy of a database from a session that
-            wasn’t saved to a file.
-            <button className="review-link" disabled={busy} onClick={() => restoreRecovery(recovery)}>
-              Recover it
-            </button>
+            <strong>Unsaved work found.</strong> A database was left open in this browser without being
+            saved to a file. The copy is on this computer, in this browser’s own storage for this site —
+            it was never sent anywhere.
+            <div className="gate-recovery-actions">
+              <button className="review-link" disabled={busy} onClick={() => restoreRecovery(recovery)}>
+                Open it
+              </button>
+              <button
+                className="review-link"
+                disabled={busy}
+                onClick={async () => {
+                  if (!confirm('Delete the copy this browser is holding? Anything in it that was never saved to a file is gone.')) return
+                  await discardRecoveryCopy()
+                  setRecovery(null)
+                }}
+              >
+                Delete it
+              </button>
+            </div>
           </div>
         )}
 

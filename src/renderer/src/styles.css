@@ -3015,3 +3015,9 @@ input[type='month'] {
 .sheet-alumni {
   margin: 10px 0 0;
 }
+
+.gate-recovery-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+}
