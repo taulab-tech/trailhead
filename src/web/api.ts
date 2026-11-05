@@ -53,6 +53,7 @@ import {
   updateGroup
 } from '../main/db/certificates' 
 import { commitImport, parseWorkbookForPreview, previewImport } from '../main/importer'
+import { quickAdd } from '../main/db/quickAdd'
 import type {
   AppCapabilities,
   UpdatableField,
@@ -60,7 +61,8 @@ import type {
   LookupItem,
   LookupStatus,
   NewStudentInput,
-  PositionSearchResult
+  PositionSearchResult,
+  QuickAddRequest
 } from '../shared/types'
 import { UPDATABLE_FIELDS } from '../shared/types'
 import { loadWorkbook, registerFile } from './workbooks'
@@ -195,6 +197,12 @@ export const webApi = {
     updateEvent(id, fields)
   },
   deleteEvent: async (id: string) => deleteEvent(id),
+
+  quickAdd: async (request: QuickAddRequest) => {
+    const result = quickAdd(request)
+    if (!request.previewOnly) await save()
+    return result
+  },
 
   listCategories: async () => listCategories(),
   createCategory: async (name: string, stageOrder: number | null) => createCategory(name, stageOrder),

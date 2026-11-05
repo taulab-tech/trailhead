@@ -14,6 +14,8 @@ import type {
   ParsedWorkbook,
   PossibleDuplicate,
   ReachOutSuggestion,
+  QuickAddRequest,
+  QuickAddResult,
   RecentContact,
   Student,
   StudentDetail,
@@ -85,6 +87,8 @@ const api = {
   getDashboardStats: (): Promise<DashboardStats> => ipcRenderer.invoke('dashboard:stats'),
   getReachOutSuggestions: (): Promise<ReachOutSuggestion[]> => ipcRenderer.invoke('dashboard:reachOut'),
   getRecentContacts: (): Promise<RecentContact[]> => ipcRenderer.invoke('dashboard:recentContacts'),
+  quickAdd: (request: QuickAddRequest): Promise<QuickAddResult> =>
+    ipcRenderer.invoke('students:quickAdd', request),
 
   getEventStudentSets: (): Promise<{ eventId: string; studentIds: string[] }[]> =>
     ipcRenderer.invoke('funnel:eventStudentSets'),

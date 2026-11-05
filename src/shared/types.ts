@@ -617,3 +617,75 @@ export interface RecentContact {
   /** True for the few close enough that a word now is likely to finish it. */
   promising: boolean
 }
+
+/* ------------------------- Adding people on the spot -------------------- */
+
+/** One line of pasted text, read as a person. */
+export interface ParsedPerson {
+  raw: string
+  firstName: string
+  lastName: string
+  emails: string[]
+  phones: string[]
+  note: string | null
+  nameOrderConfirmed: boolean
+  problem: string | null
+}
+
+/** Somebody else this person keeps turning up with. */
+export interface Connection {
+  studentId: string
+  firstName: string
+  lastName: string
+  /** Events the two of them have both been to. */
+  sharedEvents: number
+}
+
+/** What the app can say about one person the moment they are added. */
+export interface QuickAddPerson {
+  studentId: string
+  firstName: string
+  lastName: string
+  line: ParsedPerson
+  /** True when nobody by this name was on record before today. */
+  isNew: boolean
+  /** Events attended in total, counting the one just added. */
+  attendanceCount: number
+  /** The last time anybody saw them before today, and where. */
+  previouslySeen: string | null
+  previouslySeenAt: string | null
+  /** Details this line filled in or changed on their record. */
+  updates: FieldUpdate[]
+  /** Certificates they have started, furthest first. */
+  certificates: { name: string; percent: number; unitsRemaining: number; complete: boolean }[]
+  /** How far along the trail they have got. */
+  furthestStop: string | null
+  /** The people they overlap with most. */
+  connections: Connection[]
+  /** What to do next, and the fact behind it. */
+  nextStep: string
+  nextStepBecause: string
+}
+
+/** The result of pasting a list of people in. */
+export interface QuickAddResult {
+  /** The event they were added to, when one was given. */
+  eventId: string | null
+  eventName: string | null
+  people: QuickAddPerson[]
+  /** Lines that held no name, handed back to be fixed rather than dropped. */
+  unreadable: ParsedPerson[]
+  newStudents: number
+  returning: number
+}
+
+/** What the screen sends when somebody pastes a list in. */
+export interface QuickAddRequest {
+  text: string
+  /** The event they all attended. Blank adds them without an event. */
+  eventName: string | null
+  eventDate: string | null
+  categoryId: string | null
+  /** Preview only: work out what would happen without writing anything. */
+  previewOnly?: boolean
+}

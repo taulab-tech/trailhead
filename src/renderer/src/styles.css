@@ -3265,3 +3265,174 @@ input[type='month'] {
   font-size: 12.5px;
   line-height: 1.5;
 }
+
+/* ---- Add people ---- */
+
+.qa-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+
+.qa-names textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.qa-event label:not(:first-child) {
+  margin-top: 12px;
+}
+
+.qa-event input,
+.qa-event select {
+  width: 100%;
+}
+
+.qa-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.qa-problems {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--warn-border, #e6d6b8);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft, #fdf6e8);
+  font-size: 13px;
+}
+
+.qa-problems ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.qa-problems code {
+  font-size: 12px;
+}
+
+.qa-people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 12px;
+}
+
+.qa-person {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+/* Somebody nobody has met before is the one thing worth spotting at a
+   glance across a screen of cards. */
+.qa-person.is-new {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.qa-person-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.qa-name {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 650;
+  font-size: 14px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qa-name:hover {
+  text-decoration: underline;
+}
+
+.badge-new {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid #cfe1d9;
+}
+
+.qa-history {
+  margin: 4px 0 10px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.qa-facts {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+}
+
+.qa-facts > div {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.qa-facts dt {
+  color: var(--text-faint);
+}
+
+.qa-facts dd {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.qa-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.qa-link:hover {
+  text-decoration: underline;
+}
+
+.qa-updated {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.qa-note {
+  margin: 0 0 10px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.qa-next {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .qa-form {
+    grid-template-columns: 1fr;
+  }
+}

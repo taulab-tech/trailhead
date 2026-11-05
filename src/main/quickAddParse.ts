@@ -44,7 +44,14 @@ const EMAIL = /[^\s,;<>()]+@[^\s,;<>()]+\.[^\s,;<>()]+/g
 const PHONE = /(?:\+?\d[\d\s().-]{7,}\d)/g
 
 /** Words that are part of a surname rather than a separate name. */
-const NAME_PARTICLES = new Set(['van', 'von', 'de', 'del', 'della', 'da', 'di', 'du', 'la', 'le', 'bin', 'binte', 'al', 'st', 'ter', 'ten'])
+const NAME_PARTICLES = new Set([
+  'van', 'von', 'de', 'der', 'den', 'del', 'della', 'da', 'das', 'dos', 'di', 'du',
+  'la', 'le', 'el', 'al', 'bin', 'binte', 'bint', 'ibn', 'abu', 'st', 'ter', 'ten'
+])
+
+function isParticle(word: string): boolean {
+  return NAME_PARTICLES.has(word.toLowerCase().replace(/\.$/, ''))
+}
 
 function titleCaseWord(word: string): string {
   if (!word) return word
@@ -55,10 +62,14 @@ function titleCaseWord(word: string): string {
 }
 
 function tidyName(value: string): string {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => w.split('-').map(titleCaseWord).join('-'))
+  const words = value.split(/\s+/).filter(Boolean)
+  return words
+    .map((word, index) => {
+      // "van der Berg" is how the name is written; capitalising the
+      // particles would be correcting somebody's own name.
+      if (words.length > 1 && index < words.length - 1 && isParticle(word)) return word.toLowerCase()
+      return word.split('-').map(titleCaseWord).join('-')
+    })
     .join(' ')
 }
 
@@ -75,12 +86,16 @@ function splitPlainName(text: string): { firstName: string; lastName: string } {
   if (parts.length === 0) return { firstName: '', lastName: '' }
   if (parts.length === 1) return { firstName: parts[0], lastName: '' }
 
+  // The surname starts at the first particle, so "van der Berg" stays whole
+  // instead of leaving a first name of "Amara van". A particle with nothing
+  // after it is somebody's actual name, not a particle.
   let cut = 1
-  while (cut < parts.length - 1 && NAME_PARTICLES.has(parts[cut].toLowerCase().replace(/\.$/, ''))) {
-    cut++
+  for (let i = 1; i < parts.length - 1; i++) {
+    if (isParticle(parts[i])) {
+      cut = i
+      break
+    }
   }
-  // A particle only belongs to the surname if something follows it.
-  while (cut > 1 && !NAME_PARTICLES.has(parts[cut - 1].toLowerCase().replace(/\.$/, ''))) cut--
   return { firstName: parts.slice(0, cut).join(' '), lastName: parts.slice(cut).join(' ') }
 }
 
@@ -148,6 +163,9 @@ export function parseLine(raw: string): ParsedLine {
     nameText = note
     note = null
   }
+
+  // Punctuation is not a name, however much of it there is.
+  if (nameText && !/\p{L}/u.test(nameText)) nameText = ''
 
   if (!nameText) {
     return {

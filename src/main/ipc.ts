@@ -66,7 +66,8 @@ import {
   startLookups,
   stopLookups
 } from './lookupQueue'
-import type { ImportSheetRequest, NewStudentInput } from '../shared/types'
+import type { ImportSheetRequest, NewStudentInput, QuickAddRequest } from '../shared/types'
+import { quickAdd } from './db/quickAdd'
 
 /** Only the details an import could otherwise overwrite need marking. */
 function isUpdatableField(field: string): field is UpdatableField {
@@ -133,6 +134,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('dashboard:stats', () => getDashboardStats())
   ipcMain.handle('dashboard:reachOut', () => reachOutSuggestions())
   ipcMain.handle('dashboard:recentContacts', () => recentContacts())
+  ipcMain.handle('students:quickAdd', (_e, request: QuickAddRequest) => quickAdd(request))
 
   ipcMain.handle('categories:list', () => listCategories())
   ipcMain.handle('categories:create', (_e, name: string, stageOrder: number | null) =>
