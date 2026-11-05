@@ -118,7 +118,7 @@ export async function refreshLookupCapability(): Promise<boolean> {
 
 function lookupsUnavailable(): never {
   throw new Error(
-    'No lookup helper is set up. Add its address in Settings, or use the search button to look in a tab.'
+    'Automatic lookup is not available on this computer. Use the search button to look the person up in a tab instead.'
   )
 }
 
