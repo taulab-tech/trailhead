@@ -45,6 +45,11 @@ function detectMapping(headers: string[], rows: Record<string, string>[] = []): 
     else if (h.includes('college')) field = 'college'
     else if (h.includes('degree')) field = 'degree'
     else if (h.includes('discipline') || h.includes('major')) field = 'discipline'
+    else if (h.includes('linkedin')) field = 'positionUrl'
+    // "affiliate company" is what the alumni tracker calls the employer.
+    else if (h.includes('organisation') || h.includes('organization') || h.includes('affiliate company'))
+      field = 'positionOrg'
+    else if (h.includes('position') || h.includes('job title')) field = 'position'
     else if (h.includes('cohort')) field = 'cohortYear'
     else if (h.includes('program')) field = 'program'
 
@@ -166,19 +171,38 @@ function sheetHeaders(ws: XLSX.WorkSheet, range: XLSX.Range, headerRow: number):
   return headers
 }
 
+/**
+ * A cell can display one thing and link to another. The contact trackers
+ * are full of LinkedIn cells reading "Delaney Bonish | LinkedIn" with the
+ * profile address hidden in the hyperlink, so the useful value is the
+ * target, not the text.
+ *
+ * Only LinkedIn profile links are taken this way. A cell that happens to
+ * be hyperlinked to anything else keeps the text somebody typed, which is
+ * what every other column wants.
+ */
+function hyperlinkedProfile(ws: XLSX.WorkSheet, row: number, column: number): string | null {
+  const cell = ws[XLSX.utils.encode_cell({ r: row, c: column })] as XLSX.CellObject | undefined
+  const target = cell?.l?.Target
+  if (!target) return null
+  return /^https?:\/\/[a-z.]*linkedin\.com\/(in|pub)\//i.test(target) ? target : null
+}
+
 function sheetRows(ws: XLSX.WorkSheet, headers: string[], headerRow: number): Record<string, string>[] {
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
     header: headers,
     range: headerRow + 1,
     defval: ''
   })
+  const range = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : null
   return rows
-    .map((row) => {
+    .map((row, i) => {
       const out: Record<string, string> = {}
-      for (const h of headers) {
+      headers.forEach((h, column) => {
+        const link = range ? hyperlinkedProfile(ws, headerRow + 1 + i, range.s.c + column) : null
         const v = row[h]
-        out[h] = v === undefined || v === null ? '' : String(v).trim()
-      }
+        out[h] = link ?? (v === undefined || v === null ? '' : String(v).trim())
+      })
       return out
     })
     .filter((r) => Object.values(r).some((v) => v !== ''))
@@ -368,6 +392,20 @@ function deriveEventName(sheetName: string, fileName: string): string {
   return sheetName.trim()
 }
 
+/**
+ * A LinkedIn column holds anything from a full URL to a bare handle to the
+ * person's name as the link text. Only something that is actually a profile
+ * address is worth keeping.
+ */
+function linkedInUrl(raw: string | undefined): string | null {
+  const text = (raw ?? '').trim()
+  if (!text) return null
+  const match = text.match(/(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com\/(?:in|pub)\/[^\s"'<>,)]+/i)
+  if (!match) return null
+  const url = match[0].replace(/[.,;]+$/, '')
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`
+}
+
 /** "202509" as a date, so a class list can be dated by its term. */
 function termDate(term: string): string | null {
   const match = term.match(/^(\d{4})(\d{2})$/)
@@ -519,6 +557,9 @@ function runSheetImport(
   const programCol = headers.find((h) => request.mapping[h] === 'program')
   const yearCol = headers.find((h) => request.mapping[h] === 'yearInProgram')
   const cohortCol = headers.find((h) => request.mapping[h] === 'cohortYear')
+  const positionCol = headers.find((h) => request.mapping[h] === 'position')
+  const positionOrgCol = headers.find((h) => request.mapping[h] === 'positionOrg')
+  const positionUrlCol = headers.find((h) => request.mapping[h] === 'positionUrl')
   const ignoredColumns = headers.filter((h) => request.mapping[h] === 'ignore')
 
   // Rosters with a mapped year column often get exported as one sheet
@@ -642,6 +683,9 @@ function runSheetImport(
         // Registrar exports write "Not Available" where a student's year
         // isn't known; that must not land on the record as if it were one.
         yearInProgram: yearCol ? meaningfulValue(row[yearCol]) : null,
+        position: positionCol ? meaningfulValue(row[positionCol]) : null,
+        positionOrg: positionOrgCol ? meaningfulValue(row[positionOrgCol]) : null,
+        positionUrl: positionUrlCol ? linkedInUrl(row[positionUrlCol]) : null,
         enrolTerm: yearCol ? parseEnrolTerm(row[yearCol]) : null,
         isAlumni: request.markAsAlumni === true,
         // On a cohort list the year column is the year they came through,

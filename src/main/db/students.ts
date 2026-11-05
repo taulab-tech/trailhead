@@ -317,9 +317,11 @@ export function createStudent(input: NewStudentInput): string {
   db.prepare(
     `INSERT INTO students
       (id, first_name, last_name, nsid, college, discipline, degree, program, year_in_program,
-       is_alumni, cohort_year, enrol_term, notes, created_at, updated_at)
+       is_alumni, cohort_year, enrol_term, position, position_org, position_url,
+       notes, created_at, updated_at)
      VALUES (@id, @firstName, @lastName, @nsid, @college, @discipline, @degree, @program, @yearInProgram,
-       @isAlumni, @cohortYear, @enrolTerm, @notes, @createdAt, @updatedAt)`
+       @isAlumni, @cohortYear, @enrolTerm, @position, @positionOrg, @positionUrl,
+       @notes, @createdAt, @updatedAt)`
   ).run({
     id,
     firstName: input.firstName,
@@ -332,6 +334,9 @@ export function createStudent(input: NewStudentInput): string {
     yearInProgram: input.yearInProgram ?? null,
     isAlumni: input.isAlumni ? 1 : 0,
     cohortYear: input.cohortYear ?? null,
+    position: input.position ?? null,
+    positionOrg: input.positionOrg ?? null,
+    positionUrl: input.positionUrl ?? null,
     enrolTerm: input.enrolTerm ?? null,
     notes: null,
     createdAt: now,

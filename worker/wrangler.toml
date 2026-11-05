@@ -1,0 +1,8 @@
+name = "trailhead-lookup"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"
+
+# Only these sites may call it. Without this the Worker answers nobody —
+# an open search proxy is somebody else's problem waiting to happen.
+[vars]
+ALLOWED_ORIGINS = "https://taulab-tech.github.io,http://localhost:5174"

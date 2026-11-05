@@ -155,6 +155,9 @@ export type MappableField =
   | 'program'
   | 'yearInProgram'
   | 'cohortYear'
+  | 'position'
+  | 'positionOrg'
+  | 'positionUrl'
   | 'ignore'
 
 export type ColumnMapping = Record<string, MappableField>
@@ -228,6 +231,9 @@ export interface NewStudentInput {
   degree?: string | null
   program?: string | null
   yearInProgram?: string | null
+  position?: string | null
+  positionOrg?: string | null
+  positionUrl?: string | null
   isAlumni?: boolean
   cohortYear?: number | null
   enrolTerm?: 'fall' | 'winter' | null
@@ -502,7 +508,10 @@ export const UPDATABLE_FIELDS = [
   'discipline',
   'degree',
   'program',
-  'yearInProgram'
+  'yearInProgram',
+  'position',
+  'positionOrg',
+  'positionUrl'
 ] as const
 
 export type UpdatableField = (typeof UPDATABLE_FIELDS)[number]
@@ -513,7 +522,10 @@ export const FIELD_LABELS: Record<UpdatableField, string> = {
   discipline: 'Discipline',
   degree: 'Degree',
   program: 'Program',
-  yearInProgram: 'Year in program'
+  yearInProgram: 'Year in program',
+  position: 'Position',
+  positionOrg: 'Organisation',
+  positionUrl: 'LinkedIn'
 }
 
 /**

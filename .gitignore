@@ -11,3 +11,6 @@ dist-web
 *.db
 *.db-wal
 *.db-shm
+
+worker/node_modules
+worker/.wrangler

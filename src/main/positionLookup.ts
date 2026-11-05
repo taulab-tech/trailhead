@@ -1,53 +1,24 @@
-import { spawn } from 'child_process'
-import fs from 'fs'
-import path from 'path'
 import { normalizeName } from './normalize'
 import type { PositionCandidate, PositionSearchResult, SearchAttempt } from '../shared/types'
 
 /**
- * Looks a student up on LinkedIn through a DuckDuckGo search, using the
- * `ddgs` Python package. The Windows installer ships its own Python with
- * ddgs (scripts/bundle-python.cjs); otherwise the system Python is used. This is the app's only network
- * feature: it runs once per click on a student, never in bulk, and searches
- * are spaced out so repeated clicks can't hammer the search engine.
+ * Looking a student up on LinkedIn: building the query, reading results
+ * into candidates, ranking them, and spacing the searches out.
+ *
+ * What is not here is the search itself. A desktop process can call a
+ * search engine directly; a browser tab cannot — the engine would have to
+ * send it an `Access-Control-Allow-Origin` header, and none do. So the
+ * transport is supplied by whichever build is running, and everything else
+ * is shared between them.
+ *
+ * This is the app's only network feature: it runs once per click on a
+ * student, never in bulk, and searches are spaced out so repeated clicks
+ * can't hammer the search engine.
  */
 
-const MAX_RESULTS = 5
+export const MAX_RESULTS = 5
 const MIN_SECONDS_BETWEEN_SEARCHES = 4
-const SEARCH_TIMEOUT_MS = 25_000
-
-// The query arrives as argv, never interpolated into the code.
-const PY_SCRIPT = `
-import json, sys
-try:
-    from ddgs import DDGS
-except ImportError:
-    print(json.dumps({"error": "missing_ddgs"}))
-    sys.exit(0)
-try:
-    results = DDGS().text(sys.argv[1], max_results=int(sys.argv[2]))
-except Exception as e:
-    if "no results" in str(e).lower():
-        results = []
-    else:
-        print(json.dumps({"error": str(e)}))
-        sys.exit(0)
-print(json.dumps([{"title": r.get("title", ""), "body": r.get("body", ""), "href": r.get("href", "")} for r in results or []]))
-`
-
-const SYSTEM_PYTHONS: [string, string[]][] =
-  process.platform === 'win32'
-    ? [['python', []], ['py', ['-3']], ['python3', []]]
-    : [['python3', []], ['python', []]]
-
-/** The bundled runtime (installed app, or a prepared python-runtime/ in dev) first, then the system's. */
-function pythonCommands(): [string, string[]][] {
-  const bundled = [
-    process.resourcesPath && path.join(process.resourcesPath, 'python', 'python.exe'),
-    path.join(process.cwd(), 'python-runtime', 'win', 'python.exe')
-  ].filter((p): p is string => !!p && process.platform === 'win32' && fs.existsSync(p))
-  return [...bundled.map((p): [string, string[]] => [p, []]), ...SYSTEM_PYTHONS]
-}
+export const SEARCH_TIMEOUT_MS = 25_000
 
 export interface RawResult {
   title: string
@@ -57,7 +28,9 @@ export interface RawResult {
 
 let lastSearchAt = 0
 let queue: Promise<unknown> = Promise.resolve()
-let rawSearch: (query: string) => Promise<RawResult[]> = (query) => runDdgs(query)
+let rawSearch: (query: string) => Promise<RawResult[]> = () => {
+  throw new Error('Looking people up isn’t set up for this build.')
+}
 let minSecondsBetweenSearches = MIN_SECONDS_BETWEEN_SEARCHES
 
 /** Tests swap in an offline search engine and drop the spacing; never used by the app. */
@@ -65,8 +38,16 @@ export function configureSearchForTesting(options: {
   search?: (query: string) => Promise<RawResult[]>
   minSecondsBetweenSearches?: number
 }): void {
-  rawSearch = options.search ?? ((query) => runDdgs(query))
+  if (options.search) rawSearch = options.search
   minSecondsBetweenSearches = options.minSecondsBetweenSearches ?? MIN_SECONDS_BETWEEN_SEARCHES
+}
+
+/**
+ * Says how this build reaches a search engine. Called once at startup; the
+ * desktop passes the Python transport, the web app passes its proxy.
+ */
+export function setSearchTransport(search: (query: string) => Promise<RawResult[]>): void {
+  rawSearch = search
 }
 
 /**
@@ -168,59 +149,6 @@ function searchPositions(query: string): Promise<PositionSearchResult> {
   })
   queue = run.catch(() => undefined)
   return run
-}
-
-async function runDdgs(query: string): Promise<RawResult[]> {
-  for (const [command, prefixArgs] of pythonCommands()) {
-    let output: string
-    try {
-      output = await runPython(command, [...prefixArgs, '-c', PY_SCRIPT, query, String(MAX_RESULTS)])
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue
-      throw err
-    }
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(output.trim().split('\n').pop() ?? '')
-    } catch {
-      // e.g. the Windows Store "python" stub when Python isn't installed.
-      continue
-    }
-    if (parsed && typeof parsed === 'object' && 'error' in parsed) {
-      const error = String((parsed as { error: unknown }).error)
-      if (error === 'missing_ddgs') {
-        throw new Error('The ddgs package isn’t installed. Run "pip install ddgs" in a terminal, then try again.')
-      }
-      throw new Error(`The search didn’t work (${error}). Wait a minute and try again.`)
-    }
-    return parsed as RawResult[]
-  }
-  throw new Error('Python wasn’t found. Install Python 3 and run "pip install ddgs", then try again.')
-}
-
-function runPython(command: string, args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-      windowsHide: true
-    })
-    let stdout = ''
-    let stderr = ''
-    const timer = setTimeout(() => {
-      child.kill()
-      reject(new Error('The search timed out. Check your internet connection and try again.'))
-    }, SEARCH_TIMEOUT_MS)
-    child.stdout.on('data', (d) => (stdout += d))
-    child.stderr.on('data', (d) => (stderr += d))
-    child.on('error', (err) => {
-      clearTimeout(timer)
-      reject(err)
-    })
-    child.on('close', () => {
-      clearTimeout(timer)
-      resolve(stdout || stderr)
-    })
-  })
 }
 
 function field(body: string, label: string): string | null {

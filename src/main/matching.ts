@@ -48,6 +48,9 @@ export interface PersonRecord {
   degree?: string | null
   program?: string | null
   yearInProgram?: string | null
+  position?: string | null
+  positionOrg?: string | null
+  positionUrl?: string | null
   isAlumni?: boolean
   cohortYear?: number | null
   enrolTerm?: 'fall' | 'winter' | null
@@ -217,7 +220,10 @@ export function matchStudent(person: PersonRecord, context?: MatchContext): Matc
         discipline: person.discipline,
         degree: person.degree,
         program: person.program,
-        yearInProgram: person.yearInProgram
+        yearInProgram: person.yearInProgram,
+        position: person.position,
+        positionOrg: person.positionOrg,
+        positionUrl: person.positionUrl
       },
       person.enrolTerm,
       context ?? newMatchContext(null, 'unknown')
@@ -245,6 +251,9 @@ export function matchStudent(person: PersonRecord, context?: MatchContext): Matc
     degree: person.degree,
     program: person.program,
     yearInProgram: person.yearInProgram,
+    position: person.position,
+    positionOrg: person.positionOrg,
+    positionUrl: person.positionUrl,
     isAlumni: person.isAlumni,
     cohortYear: person.cohortYear,
     enrolTerm: person.enrolTerm

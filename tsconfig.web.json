@@ -19,7 +19,7 @@
     "src/main/dataDir.ts",
     "src/main/db/desktop.ts",
     "src/main/lookupQueue.ts",
-    "src/main/positionLookup.ts",
+    "src/main/pythonSearch.ts",
     "src/main/workbooksDesktop.ts"
   ],
   "compilerOptions": {
