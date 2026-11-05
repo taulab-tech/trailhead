@@ -41,6 +41,7 @@ import {
   deleteCertificate,
   deleteGroup,
   getCertificate,
+  installStarterCertificates,
   listCertificates,
   removeRequirement,
   removeSubstitution,
@@ -120,7 +121,7 @@ function lookupsUnavailable(): never {
 }
 
 export const webApi = {
-  capabilities: { positionLookup: false, restoreFromBackup: false } as AppCapabilities,
+  capabilities: { positionLookup: false, usesLocalLookupHelper: true, restoreFromBackup: false } as AppCapabilities,
 
   // The renderer treats this as an opaque handle, so a reference to the file
   // held in memory does the same job as a path on disk.
@@ -236,6 +237,11 @@ export const webApi = {
   },
 
   listCertificates: async () => listCertificates(),
+  installStarterCertificates: async () => {
+    const added = installStarterCertificates()
+    await save()
+    return added
+  },
   getCertificate: async (id: string) => getCertificate(id),
   getCertificateRoster: async (id: string) => certificateRoster(id),
   createCertificate: async (name: string, totalUnits: number | null, notes: string | null) => {

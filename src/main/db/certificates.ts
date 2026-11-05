@@ -2,6 +2,7 @@ import { newId } from '../ids'
 import { getDb } from './index'
 import { certificateProgress } from '../certificates'
 import { listStudentCourses } from './courses'
+import { listStudents } from './students'
 import { USASK_CERTIFICATES, type CertificateSeed } from '../certificateSeeds'
 import type {
   Certificate,
@@ -152,14 +153,14 @@ export function certificateRoster(certificateId: string): CertificateRosterEntry
   if (!definition) return []
 
   const db = getDb()
-  const students = db
-    .prepare(
-      `SELECT DISTINCT s.id, s.first_name, s.last_name, s.year_in_program
-       FROM students s
-       JOIN student_courses sc ON sc.student_id = s.id
-       ORDER BY s.last_name ASC, s.first_name ASC`
+  // Through listStudents, so the year shown here is the worked-out one and
+  // matches what the Students screen says rather than the raw record.
+  const withCourses = new Set(
+    (db.prepare('SELECT DISTINCT student_id FROM student_courses').all() as { student_id: string }[]).map(
+      (r) => r.student_id
     )
-    .all() as { id: string; first_name: string; last_name: string; year_in_program: string | null }[]
+  )
+  const students = listStudents().filter((s) => withCourses.has(s.id))
 
   const declared = new Set(
     (
@@ -174,9 +175,9 @@ export function certificateRoster(certificateId: string): CertificateRosterEntry
       const progress = certificateProgress(definition, listStudentCourses(student.id))
       return {
         studentId: student.id,
-        firstName: student.first_name,
-        lastName: student.last_name,
-        yearInProgram: student.year_in_program,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        currentYear: student.currentYear,
         earnedUnits: progress.earnedUnits,
         inProgressUnits: progress.inProgressUnits,
         totalUnits: progress.totalUnits,
@@ -372,13 +373,16 @@ export function installCertificate(seed: CertificateSeed): string {
 }
 
 /**
- * Puts the three College of Engineering certificates in, once, on a database
- * that has none. They are ordinary records afterwards — editable, deletable,
- * and never re-added behind the user's back.
+ * Puts the three College of Engineering certificates in, when somebody asks
+ * for them from the Certificates screen.
+ *
+ * Deliberately not done on its own. A certificate is the user's data, and
+ * finding three of them already in a database you just created is a
+ * surprise — the right kind of help is saving somebody from typing out
+ * 38 course requirements, not deciding for them that they wanted it.
  */
-export function seedCertificatesIfEmpty(): number {
-  const db = getDb()
-  const existing = db.prepare('SELECT COUNT(*) AS c FROM certificates').get() as { c: number }
+export function installStarterCertificates(): number {
+  const existing = getDb().prepare('SELECT COUNT(*) AS c FROM certificates').get() as { c: number }
   if (existing.c > 0) return 0
 
   for (const seed of USASK_CERTIFICATES) installCertificate(seed)

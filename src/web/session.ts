@@ -1,5 +1,4 @@
 import { initializeDatabase, looksLikeTrailheadDb, setDbDriver } from '../main/db'
-import { seedCertificatesIfEmpty } from '../main/db/certificates'
 import { refreshLookupCapability } from './api'
 import { setWorkbookReader } from '../main/workbooks'
 import { openWebDatabase, type WebDatabase } from './sqljs'
@@ -165,7 +164,6 @@ async function start(bytes: Uint8Array | undefined, fileName: string, fileHandle
   setDbDriver(opened)
   setWorkbookReader(browserWorkbookReader)
   initializeDatabase(opened)
-  seedCertificatesIfEmpty()
   // Look for the helper in the background; the screens ask again when
   // somebody actually wants a lookup.
   void refreshLookupCapability()

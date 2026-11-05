@@ -41,6 +41,7 @@ import {
   deleteCertificate,
   deleteGroup,
   getCertificate,
+  installStarterCertificates,
   listCertificates,
   removeRequirement,
   removeSubstitution,
@@ -147,6 +148,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('lookups:dismiss', (_e, studentIds: string[]) => dismissLookups(studentIds))
 
   ipcMain.handle('certificates:list', () => listCertificates())
+  ipcMain.handle('certificates:installStarters', () => installStarterCertificates())
   ipcMain.handle('certificates:get', (_e, id: string) => getCertificate(id))
   ipcMain.handle('certificates:roster', (_e, id: string) => certificateRoster(id))
   ipcMain.handle('certificates:create', (_e, name: string, totalUnits: number | null, notes: string | null) =>

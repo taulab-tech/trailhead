@@ -28,7 +28,7 @@ import type {
 } from '../shared/types'
 
 const api = {
-  capabilities: { positionLookup: true, restoreFromBackup: true } as AppCapabilities,
+  capabilities: { positionLookup: true, usesLocalLookupHelper: false, restoreFromBackup: true } as AppCapabilities,
 
   getPathForFile: (file: File): string => webUtils.getPathForFile(file),
   pickFiles: (): Promise<string[]> => ipcRenderer.invoke('dialog:openFiles'),
@@ -97,6 +97,7 @@ const api = {
   dismissLookups: (studentIds: string[]): Promise<void> => ipcRenderer.invoke('lookups:dismiss', studentIds),
 
   listCertificates: (): Promise<Certificate[]> => ipcRenderer.invoke('certificates:list'),
+  installStarterCertificates: (): Promise<number> => ipcRenderer.invoke('certificates:installStarters'),
   getCertificate: (id: string): Promise<CertificateDefinition | null> =>
     ipcRenderer.invoke('certificates:get', id),
   getCertificateRoster: (id: string): Promise<CertificateRosterEntry[]> =>

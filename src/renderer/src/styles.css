@@ -3028,3 +3028,11 @@ input[type='month'] {
   line-height: 1.45;
   color: var(--text-faint);
 }
+
+.settings-danger {
+  border-color: var(--danger);
+}
+
+.settings-danger h3 {
+  color: var(--danger);
+}

@@ -102,27 +102,6 @@ function Shell(): React.JSX.Element {
     }
   }
 
-  const wipeAll = async (): Promise<void> => {
-    if (
-      !confirm(
-        'Wipe ALL data — every student, event, and attendance record? A safety backup is saved first, but this cannot be undone from inside the app. Continue?'
-      )
-    ) {
-      return
-    }
-    setDbAction('wipe')
-    setDbStatus(null)
-    try {
-      const safetyBackup = await window.api.wipeDatabase()
-      setDbStatus(safetyBackup ? `Wiped. Safety copy: ${safetyBackup}` : null)
-      bump()
-    } catch (err) {
-      setDbStatus(err instanceof Error ? err.message : String(err))
-    } finally {
-      setDbAction(null)
-    }
-  }
-
   const nav: { key: Page; label: string; icon: React.JSX.Element }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: <Icon d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z" /> },
     { key: 'import', label: 'Import', icon: <Icon d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" /> },
@@ -197,10 +176,6 @@ function Shell(): React.JSX.Element {
               {dbAction === 'restore' ? 'Restoring…' : 'Restore from backup…'}
             </button>
           )}
-          <button className="sidebar-action danger" disabled={dbAction !== null} onClick={wipeAll}>
-            <Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-            {dbAction === 'wipe' ? 'Wiping…' : 'Wipe all data'}
-          </button>
           {dbStatus && <div className="sidebar-status">{dbStatus}</div>}
           <div className="sidebar-note">
             <Icon d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4" size={14} />

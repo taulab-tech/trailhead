@@ -7,6 +7,7 @@ import type {
   GroupKind
 } from '../../../shared/types'
 import { useDataVersion } from '../DataContext'
+import StudentDetailDrawer from '../components/StudentDetailDrawer'
 
 function units(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
@@ -36,7 +37,8 @@ function partsAddUpTo(definition: CertificateDefinition): number {
 
 function Roster({ certificateId }: { certificateId: string }): React.JSX.Element {
   const [rows, setRows] = useState<CertificateRosterEntry[] | null>(null)
-  const { version } = useDataVersion()
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { version, bump } = useDataVersion()
 
   useEffect(() => {
     setRows(null)
@@ -72,7 +74,7 @@ function Roster({ certificateId }: { certificateId: string }): React.JSX.Element
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.studentId}>
+              <tr key={row.studentId} onClick={() => setSelectedId(row.studentId)}>
                 <td>
                   <strong>
                     {row.firstName} {row.lastName}
@@ -80,7 +82,11 @@ function Roster({ certificateId }: { certificateId: string }): React.JSX.Element
                   {row.complete && <span className="cert-done-pill">Complete</span>}
                   {row.declared && !row.complete && <span className="cert-declared-pill">Enrolled</span>}
                 </td>
-                <td className="text-faint">{row.yearInProgram ?? '—'}</td>
+                <td className="text-faint">
+                  <span className={`year-label kind-${row.currentYear.kind}`}>
+                    {row.currentYear.kind === 'unknown' ? '—' : row.currentYear.label}
+                  </span>
+                </td>
                 <td>
                   <div className="cert-roster-figure">
                     {units(row.earnedUnits)} / {units(row.totalUnits)} CU · {row.percent}%
@@ -97,6 +103,14 @@ function Roster({ certificateId }: { certificateId: string }): React.JSX.Element
           </tbody>
         </table>
       </div>
+
+      {selectedId && (
+        <StudentDetailDrawer
+          studentId={selectedId}
+          onClose={() => setSelectedId(null)}
+          onChanged={bump}
+        />
+      )}
     </>
   )
 }
@@ -383,7 +397,25 @@ export default function CertificatesPage(): React.JSX.Element {
       </div>
 
       {certificates.length === 0 ? (
-        <p className="text-faint">No certificates yet.</p>
+        <div className="card" style={{ padding: 24 }}>
+          <p style={{ marginTop: 0 }}>
+            No certificates yet. A certificate is a set of courses and how many credit units are
+            needed from each — add your own, or start from the three the College of Engineering
+            publishes and change them to suit.
+          </p>
+          <button
+            className="btn btn-primary"
+            onClick={async () => {
+              await window.api.installStarterCertificates()
+              // Reload either way: if they are already there, the list on
+              // screen is simply out of date.
+              load()
+              bump()
+            }}
+          >
+            Add the three College of Engineering certificates
+          </button>
+        </div>
       ) : (
         <>
           <div className="sheet-tabs page-tabs" role="tablist">

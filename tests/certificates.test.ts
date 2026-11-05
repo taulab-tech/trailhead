@@ -15,7 +15,7 @@ import {
   getCertificate,
   installCertificate,
   listCertificates,
-  seedCertificatesIfEmpty,
+  installStarterCertificates,
   setStudentCertificate,
   studentCertificates
 } from '../src/main/db/certificates'
@@ -251,15 +251,15 @@ test('the three College of Engineering certificates add up to their stated total
   }
 })
 
-test('seeding installs the three certificates, once', () => {
-  assert.equal(seedCertificatesIfEmpty(), 3)
+test('the starter certificates go in when asked for, and only once', () => {
+  assert.equal(installStarterCertificates(), 3)
   assert.equal(listCertificates().length, 3)
-  assert.equal(seedCertificatesIfEmpty(), 0, 'not re-added over what the user has')
+  assert.equal(installStarterCertificates(), 0, 'not re-added over what the user has')
   assert.equal(listCertificates().length, 3)
 })
 
 test('a student who has finished the Innovation certificate reads as finished', () => {
-  seedCertificatesIfEmpty()
+  installStarterCertificates()
   const innovation = listCertificates().find((c) => c.name.startsWith('Engineering Innovation'))!
   const definitionFromDb = getCertificate(innovation.id)!
   assert.equal(totalUnitsFor(definitionFromDb), 26)
@@ -287,7 +287,7 @@ test('a student who has finished the Innovation certificate reads as finished', 
 })
 
 test('a capstone from another discipline counts for the Innovation certificate', () => {
-  seedCertificatesIfEmpty()
+  installStarterCertificates()
   const innovation = listCertificates().find((c) => c.name.startsWith('Engineering Innovation'))!
 
   const student = createStudent({ firstName: 'Marcus', lastName: 'Webb' })
@@ -302,7 +302,7 @@ test('a capstone from another discipline counts for the Innovation certificate',
 /* -------------------------------- roster -------------------------------- */
 
 test('the roster ranks students by how far along they are', () => {
-  seedCertificatesIfEmpty()
+  installStarterCertificates()
   const innovation = listCertificates().find((c) => c.name.startsWith('Engineering Innovation'))!
 
   const ahead = createStudent({ firstName: 'Priya', lastName: 'Raman' })
@@ -323,7 +323,7 @@ test('the roster ranks students by how far along they are', () => {
 })
 
 test('declaring a certificate puts a student on its roster regardless', () => {
-  seedCertificatesIfEmpty()
+  installStarterCertificates()
   const innovation = listCertificates().find((c) => c.name.startsWith('Engineering Innovation'))!
   const student = createStudent({ firstName: 'Dev', lastName: 'Okonkwo' })
   recordStudentCourse({ studentId: student, courseCode: 'PHYS 115', term: '202509', status: 'completed' })

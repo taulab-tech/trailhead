@@ -21,6 +21,8 @@ export default function SettingsPage({
   const [status, setStatus] = useState<string | null>(null)
   const [helperDraft, setHelperDraft] = useState('')
   const [helperStatus, setHelperStatus] = useState<string | null>(null)
+  const [wiping, setWiping] = useState(false)
+  const [wipeStatus, setWipeStatus] = useState<string | null>(null)
 
   useEffect(() => {
     if (focus) document.getElementById(focus)?.scrollIntoView({ block: 'start' })
@@ -44,6 +46,27 @@ export default function SettingsPage({
     setStatus(result.length ? 'Saved.' : 'Cleared.')
   }
 
+  const wipeAll = async (): Promise<void> => {
+    if (
+      !confirm(
+        'Wipe ALL data — every student, event, course and attendance record? A copy is saved first, but this cannot be undone from inside the app. Continue?'
+      )
+    ) {
+      return
+    }
+    setWiping(true)
+    setWipeStatus(null)
+    try {
+      const safety = await window.api.wipeDatabase()
+      setWipeStatus(safety ? `Wiped. A copy was saved as ${safety}.` : 'Wiped.')
+      onChanged()
+    } catch (err) {
+      setWipeStatus(err instanceof Error ? err.message : String(err))
+    } finally {
+      setWiping(false)
+    }
+  }
+
   const saveHelper = async (): Promise<void> => {
     try {
       const saved = await window.api.setLookupHelperUrl(helperDraft.trim() || null)
@@ -63,7 +86,7 @@ export default function SettingsPage({
         </div>
       </div>
 
-      {!window.api.capabilities.positionLookup && (
+      {window.api.capabilities.usesLocalLookupHelper && (
         <div className="card settings-card">
           <div className="settings-row">
             <div className="settings-copy">
@@ -152,6 +175,28 @@ export default function SettingsPage({
       </div>
 
       <DuplicatesReview onChanged={onChanged} />
+      <div className="card settings-card settings-danger">
+        <div className="settings-row">
+          <div className="settings-copy">
+            <h3>Wipe all data</h3>
+            <p>
+              Deletes every student, event, course and attendance record in the database that is
+              open. A copy is saved first, but this can&rsquo;t be undone from inside the app.
+            </p>
+          </div>
+          <div className="settings-control">
+            <button className="btn btn-danger" disabled={wiping} onClick={wipeAll}>
+              {wiping ? 'Wiping…' : 'Wipe all data'}
+            </button>
+            {wipeStatus && (
+              <div className="text-faint" style={{ marginTop: 10 }}>
+                {wipeStatus}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
     </div>
   )
 }

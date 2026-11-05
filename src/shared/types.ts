@@ -350,7 +350,14 @@ export interface SearchAttempt {
  * somebody else's server. Screens check here rather than failing on click.
  */
 export interface AppCapabilities {
+  /** Whether a lookup can be run right now. On the web this follows the helper. */
   positionLookup: boolean
+  /**
+   * Whether this build searches through a helper on the user's computer.
+   * True for the web build whether or not one is currently running, so the
+   * setting for it doesn't disappear the moment it starts working.
+   */
+  usesLocalLookupHelper: boolean
   /**
    * Whether the app owns a database file it can swap out from under itself.
    * The desktop build does; on the web the user opens a file themselves, so
@@ -456,7 +463,8 @@ export interface CertificateRosterEntry {
   studentId: string
   firstName: string
   lastName: string
-  yearInProgram: string | null
+  /** The worked-out year, the same one the Students screen shows. */
+  currentYear: YearEstimate
   earnedUnits: number
   inProgressUnits: number
   totalUnits: number
