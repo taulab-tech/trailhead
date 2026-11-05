@@ -313,13 +313,45 @@ function renormalizeNsids(db: SqlDriver): void {
  * certificates are the user's again: somebody who deliberately adds COMM 204
  * back should not find it gone the next time they open the file.
  *
- * Only the three certificates the app seeded are touched, matched by name,
- * and only their course requirements — a certificate somebody typed out
- * themselves is left exactly as it is. The total is corrected only where it
- * still reads as the catalogue figure the seed wrote; if it has been edited
- * since, that edit is theirs and stands.
+ * Only the three certificates the app seeded are touched, matched by name —
+ * a certificate somebody typed out themselves is left exactly as it is.
+ *
+ * ## Why the totals are recalculated rather than left alone
+ *
+ * Taking courses out of a certificate makes its old total unreachable: an
+ * Innovation certificate still marked "out of 26 CU" with 14 CU of courses
+ * left in it caps everybody at 54% for ever, which is the exact complaint
+ * this change exists to fix. So a stored total that is higher than the
+ * remaining courses can produce is brought down to what they can; a total
+ * somebody has set *lower* is a deliberate figure and is left, as is one
+ * that already fits. An elective group asking for more units than it still
+ * contains is capped the same way and for the same reason.
  */
 export const GE_ONLY_MIGRATION_KEY = 'certificates_ge_only_v1'
+
+/** Units a group can still supply: its own courses, plus each child's minimum. */
+function groupCapacity(db: SqlDriver, certificateId: string, groupId: string): number {
+  const own = db
+    .prepare(
+      'SELECT COALESCE(SUM(credit_units), 0) AS units FROM certificate_requirements WHERE group_id = ?'
+    )
+    .get(groupId) as { units: number }
+  const children = db
+    .prepare(
+      `SELECT id, kind, min_units FROM certificate_groups
+       WHERE certificate_id = ? AND parent_id = ?`
+    )
+    .all(certificateId, groupId) as { id: string; kind: string; min_units: number | null }[]
+
+  return children.reduce(
+    (sum, child) =>
+      sum +
+      (child.kind === 'elective' && child.min_units !== null
+        ? child.min_units
+        : groupCapacity(db, certificateId, child.id)),
+    own.units
+  )
+}
 
 export function dropUntrackedCertificateCourses(db: SqlDriver): void {
   const done = db
@@ -327,31 +359,24 @@ export function dropUntrackedCertificateCourses(db: SqlDriver): void {
     .get(GE_ONLY_MIGRATION_KEY) as { value: string } | undefined
   if (done) return
 
-  // The totals the earlier seeds wrote, by certificate name. A total that
-  // still matches is one nobody has touched.
-  const seededTotals: Record<string, number> = {
-    'Engineering Innovation and Entrepreneurship': 26,
-    'Engineering Entrepreneurship – Leading Innovative Teams': 13,
-    'Engineering Entrepreneurship – New Product Market': 13
-  }
-
   const tx = db.transaction(() => {
     for (const seed of USASK_CERTIFICATES) {
       const certificate = db
-        .prepare('SELECT id, total_units FROM certificates WHERE name = ?')
-        .get(seed.name) as { id: string; total_units: number | null } | undefined
+        .prepare('SELECT id, total_units, notes FROM certificates WHERE name = ?')
+        .get(seed.name) as { id: string; total_units: number | null; notes: string | null } | undefined
       if (!certificate) continue
+      const id = certificate.id
 
       const requirements = db
         .prepare('SELECT id, course_code FROM certificate_requirements WHERE certificate_id = ?')
-        .all(certificate.id) as { id: string; course_code: string }[]
+        .all(id) as { id: string; course_code: string }[]
       const remove = db.prepare('DELETE FROM certificate_requirements WHERE id = ?')
       for (const requirement of requirements) {
         if (isUntrackedCourse(requirement.course_code)) remove.run(requirement.id)
       }
 
-      // A group emptied by those deletions has nothing left to say. Children
-      // first, so a parent whose only content was a child group goes too.
+      // A group emptied by those deletions has nothing left to say. Twice,
+      // so a parent whose only content was a child group goes with it.
       for (let pass = 0; pass < 2; pass++) {
         db.prepare(
           `DELETE FROM certificate_groups
@@ -359,14 +384,51 @@ export function dropUntrackedCertificateCourses(db: SqlDriver): void {
              AND id NOT IN (SELECT group_id FROM certificate_requirements WHERE certificate_id = ?)
              AND id NOT IN (SELECT parent_id FROM certificate_groups
                             WHERE certificate_id = ? AND parent_id IS NOT NULL)`
-        ).run(certificate.id, certificate.id, certificate.id)
+        ).run(id, id, id)
       }
 
-      if (certificate.total_units === seededTotals[seed.name] && seed.totalUnits !== null) {
-        db.prepare('UPDATE certificates SET total_units = ?, notes = ? WHERE id = ?').run(
-          seed.totalUnits,
-          seed.notes,
-          certificate.id
+      // An elective group can no longer ask for more than it holds.
+      const electives = db
+        .prepare(
+          "SELECT id, min_units FROM certificate_groups WHERE certificate_id = ? AND kind = 'elective'"
+        )
+        .all(id) as { id: string; min_units: number | null }[]
+      for (const group of electives) {
+        const capacity = groupCapacity(db, id, group.id)
+        if (group.min_units !== null && group.min_units > capacity) {
+          db.prepare('UPDATE certificate_groups SET min_units = ? WHERE id = ?').run(capacity, group.id)
+        }
+      }
+
+      // What the certificate can now add up to: each top-level group's
+      // minimum if it is elective, otherwise the units of its courses.
+      const topLevel = db
+        .prepare(
+          `SELECT id, kind, min_units FROM certificate_groups
+           WHERE certificate_id = ? AND parent_id IS NULL`
+        )
+        .all(id) as { id: string; kind: string; min_units: number | null }[]
+      const reachable = topLevel.reduce(
+        (sum, group) =>
+          sum +
+          (group.kind === 'elective' && group.min_units !== null
+            ? group.min_units
+            : groupCapacity(db, id, group.id)),
+        0
+      )
+
+      if (certificate.total_units !== null && certificate.total_units > reachable) {
+        db.prepare('UPDATE certificates SET total_units = ? WHERE id = ?').run(reachable, id)
+      }
+
+      // Say on the certificate why it is shorter than the catalogue's, but
+      // keep anything the user wrote there.
+      const notes = certificate.notes ?? ''
+      if (seed.notes && !notes.includes('COMM and RCM')) {
+        const explanation = seed.notes.slice(seed.notes.indexOf('Tracks the engineering (GE) courses only.'))
+        db.prepare('UPDATE certificates SET notes = ? WHERE id = ?').run(
+          notes ? `${notes.trim()} ${explanation}` : explanation,
+          id
         )
       }
     }

@@ -413,6 +413,64 @@ test('the migration runs once and then leaves the certificates alone', () => {
   )
 })
 
+test('an elective group cannot ask for more units than it still holds', () => {
+  installCertificate({
+    name: 'Engineering Innovation and Entrepreneurship',
+    totalUnits: 26,
+    notes: null,
+    groups: [
+      { name: 'Required courses', kind: 'required', courses: [{ code: 'GE 431', units: 3 }] },
+      {
+        name: 'Electives',
+        kind: 'elective',
+        minUnits: 9,
+        courses: [
+          { code: 'RCM 402', units: 3 },
+          { code: 'RCM 404', units: 3 },
+          { code: 'GE 450', units: 3 }
+        ]
+      }
+    ]
+  })
+  runMigrationAfresh()
+
+  const definition = getCertificate(listCertificates()[0].id)!
+  const electives = definition.groups.find((g) => g.name === 'Electives')!
+  assert.equal(electives.minUnits, 3, 'only GE 450 is left in it')
+  assert.equal(definition.totalUnits, 6, '3 required + 3 elective, and reachable')
+})
+
+test('a total somebody has set below what the courses add up to is their figure', () => {
+  installCertificate({
+    name: 'Engineering Innovation and Entrepreneurship',
+    totalUnits: 3,
+    notes: null,
+    groups: [
+      {
+        name: 'Required courses',
+        kind: 'required',
+        courses: [
+          { code: 'COMM 201', units: 3 },
+          { code: 'GE 431', units: 3 },
+          { code: 'GE 450', units: 3 }
+        ]
+      }
+    ]
+  })
+  runMigrationAfresh()
+
+  assert.equal(getCertificate(listCertificates()[0].id)!.totalUnits, 3, 'left alone; it is reachable')
+})
+
+test('the certificate says why it is shorter than the catalogue, without losing a note', () => {
+  installCertificate({ ...OLD_INNOVATION, notes: 'Ask Dana before awarding this one.' })
+  runMigrationAfresh()
+
+  const notes = listCertificates()[0].notes!
+  assert.match(notes, /^Ask Dana before awarding this one\./, 'what was written there stays')
+  assert.match(notes, /COMM and RCM/, 'and the reason is added')
+})
+
 test('a certificate somebody typed out themselves is not touched', () => {
   installCertificate({
     name: 'Our own certificate',
